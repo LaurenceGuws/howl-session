@@ -36,17 +36,26 @@
 | M2-A3: Transport boundary tests + queue closeout | done | 6cb9455 |
 | M2-A review fix | done | 695b496 |
 
-## M2-B Batch — DONE
+## M2-B Batch — DONE (accepted after review)
 
 | Ticket | Status | Commit |
 | --- | --- | --- |
 | M2-B1: Session lifecycle transport hooks (start/stop) | done | f71f9af |
 | M2-B2: Wire resize and control through transport | done | a271282 |
-| M2-B3: Integration tests and queue closeout | done | (this commit) |
+| M2-B3: Integration tests and queue closeout | done | a0c0bd5 |
+| M2-B review fix | done | 4adb009 |
+
+## M3-A Batch — DONE
+
+| Ticket | Status | Commit |
+| --- | --- | --- |
+| M3-A1: Lifecycle safety contract closure with state machine | done | 23ab51a |
+| M3-A2: Enforce lifecycle state transitions | done | deb1ebd |
+| M3-A3: Lifecycle transition tests + queue closeout | done | (this commit) |
 
 ## Outstanding
 
 Awaiting architect publication of next batch.
 
 Candidate next scope (not started, not decided):
-- M3: Lifecycle Safety — startup/shutdown/restart/error boundaries explicit and tested.
+- M3-B: Error boundary hardening — transport failure during active session, status recovery.

@@ -200,6 +200,7 @@ test "feed overflow returns QueueFull" {
     try std.testing.expectError(error.QueueFull, s.feed("123456789"));
 }
 
+
 test "feed overflow is atomic: no partial write" {
     var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4 });
     defer s.deinit();
@@ -348,4 +349,124 @@ test "feed/apply/reset unaffected by transport attachment" {
     s.reset();
     try std.testing.expectEqual(@as(usize, 0), s.apply());
     try std.testing.expectError(error.QueueFull, s.feed("123456789"));
+}
+
+test "start from idle transitions to active" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    try std.testing.expectEqual(SessionStatus.idle, s.status);
+    try s.start();
+    try std.testing.expectEqual(SessionStatus.active, s.status);
+}
+
+test "start from active returns AlreadyStarted, no status change" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    try s.start();
+    try std.testing.expectError(error.AlreadyStarted, s.start());
+    try std.testing.expectEqual(SessionStatus.active, s.status);
+}
+
+test "start from active does not double-start transport" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+    try s.start();
+    try std.testing.expectError(error.AlreadyStarted, s.start());
+    try std.testing.expect(mt.started);
+}
+
+test "stop from active transitions to stopped and calls transport" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+    try s.start();
+    s.stop();
+    try std.testing.expectEqual(SessionStatus.stopped, s.status);
+    try std.testing.expect(!mt.started);
+}
+
+test "stop from idle transitions to stopped without calling transport" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+    s.stop();
+    try std.testing.expectEqual(SessionStatus.stopped, s.status);
+    try std.testing.expect(!mt.started);
+}
+
+test "stop from stopped is idempotent, transport not called again" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+    try s.start();
+    s.stop();
+    s.stop();
+    try std.testing.expectEqual(SessionStatus.stopped, s.status);
+    try std.testing.expect(!mt.started);
+}
+
+test "start from stopped restarts transport" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+    try s.start();
+    s.stop();
+    try s.start();
+    try std.testing.expectEqual(SessionStatus.active, s.status);
+    try std.testing.expect(mt.started);
+}
+
+test "start from stopped without transport transitions to active" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    s.stop();
+    try s.start();
+    try std.testing.expectEqual(SessionStatus.active, s.status);
+}
+
+test "full lifecycle cycle: idle-active-stopped-active" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+    try std.testing.expectEqual(SessionStatus.idle, s.status);
+    try s.start();
+    try std.testing.expectEqual(SessionStatus.active, s.status);
+    try std.testing.expect(mt.started);
+    s.stop();
+    try std.testing.expectEqual(SessionStatus.stopped, s.status);
+    try std.testing.expect(!mt.started);
+    try s.start();
+    try std.testing.expectEqual(SessionStatus.active, s.status);
+    try std.testing.expect(mt.started);
 }
