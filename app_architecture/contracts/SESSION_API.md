@@ -23,7 +23,7 @@ It does not define SDL types, renderer types, or terminal semantics.
 ### deinit
 
 - Releases all session-owned resources.
-- Must be safe to call after a failed init (no-op on null/error handle).
+- Caller must only call deinit on a successfully initialized session handle.
 - Must be called exactly once per successful init.
 - No callbacks fire after deinit returns.
 
