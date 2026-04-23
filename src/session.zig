@@ -89,6 +89,8 @@ pub const Session = struct {
     }
 };
 
+const conformance = @import("conformance.zig");
+
 test "init rejects zero cols" {
     const result = Session.init(.{ .allocator = std.testing.allocator, .cols = 0, .rows = 24, .pending_capacity = 4096 });
     try std.testing.expectError(error.InvalidConfig, result);
