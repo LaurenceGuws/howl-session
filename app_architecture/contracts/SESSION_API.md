@@ -133,18 +133,36 @@ Any state ──deinit()──► (destroyed)
 ### resize
 
 - Signature: `resize(cols: u16, rows: u16) anyerror!void`
-- Dimensions must be non-zero; zero-dimension resize returns `error.InvalidDimensions`.
-- Session dimension state (`cols`, `rows`) is updated before transport notification; session dims are authoritative.
-- If a transport is attached, delegates to `transport.resize()`; transport errors are propagated.
-- With no transport attached, always succeeds after updating dims.
-- Idempotent: resize to current dimensions is a no-op.
+- Dimensions must be non-zero; zero-dimension resize returns `error.InvalidDimensions` and no state changes.
+
+**Sequencing guarantee:**
+1. `cols` and `rows` are updated on the session (authoritative).
+2. `resize_count` is incremented (wrapping) to mark a new resize epoch.
+3. Transport is notified via `transport.resize()` if attached.
+
+- Steps 1 and 2 occur unconditionally for any valid (non-zero) resize call; transport failure does not roll them back.
+- A resize to the same current dimensions still increments `resize_count` and notifies transport.
+- Transport errors are propagated; the session dims and counter are already committed.
 
 ### control
 
 - Signature: `control(signal: ControlSignal) void`
 - Caller delivers a typed `ControlSignal` value.
-- If a transport is attached, delegates to `transport.control()`; no-op otherwise.
+
+**Sequencing guarantee:**
+1. `last_control_signal` is updated on the session.
+2. Transport is notified via `transport.control()` if attached.
+
+- Step 1 always occurs; transport attachment is not required for the session to record the signal.
+- Fire-and-forget: no error channel; transport.control() is void.
 - No terminal semantic reinterpretation; signal semantics are transport-defined.
+
+## Observability Fields
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `resize_count` | `u32` | Increments (wrapping) on every valid resize call; zero at init |
+| `last_control_signal` | `?ControlSignal` | Last control signal delivered to session; null at init |
 
 ## Error Boundaries
 
