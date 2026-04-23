@@ -93,12 +93,14 @@ pub const MemTransport = struct {
 
     fn writeImpl(ptr: *anyopaque, bytes: []const u8) anyerror!usize {
         const self: *MemTransport = @ptrCast(@alignCast(ptr));
+        if (!self.started) return error.NotStarted;
         try self.tx.appendSlice(self.allocator, bytes);
         return bytes.len;
     }
 
     fn readImpl(ptr: *anyopaque, buf: []u8) anyerror!usize {
         const self: *MemTransport = @ptrCast(@alignCast(ptr));
+        if (!self.started) return error.NotStarted;
         const n = @min(buf.len, self.rx.items.len);
         if (n == 0) return 0;
         @memcpy(buf[0..n], self.rx.items[0..n]);
@@ -110,6 +112,7 @@ pub const MemTransport = struct {
 
     fn resizeImpl(ptr: *anyopaque, cols: u16, rows: u16) anyerror!void {
         const self: *MemTransport = @ptrCast(@alignCast(ptr));
+        if (!self.started) return error.NotStarted;
         self.last_cols = cols;
         self.last_rows = rows;
     }
@@ -164,6 +167,13 @@ test "write appends to tx buffer" {
     try std.testing.expectEqualSlices(u8, "hello", mt.tx.items);
 }
 
+test "write before start returns NotStarted" {
+    var mt = MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var t = mt.transport();
+    try std.testing.expectError(error.NotStarted, t.write("hello"));
+}
+
 test "read drains rx buffer" {
     var mt = MemTransport.init(std.testing.allocator);
     defer mt.deinit();
@@ -175,6 +185,14 @@ test "read drains rx buffer" {
     try std.testing.expectEqual(@as(usize, 5), n);
     try std.testing.expectEqualSlices(u8, "world", buf[0..n]);
     try std.testing.expectEqual(@as(usize, 0), mt.rx.items.len);
+}
+
+test "read before start returns NotStarted" {
+    var mt = MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var t = mt.transport();
+    var buf: [8]u8 = undefined;
+    try std.testing.expectError(error.NotStarted, t.read(&buf));
 }
 
 test "read on empty rx returns 0" {
@@ -208,6 +226,13 @@ test "resize records last dimensions" {
     try t.resize(132, 50);
     try std.testing.expectEqual(@as(u16, 132), mt.last_cols);
     try std.testing.expectEqual(@as(u16, 50), mt.last_rows);
+}
+
+test "resize before start returns NotStarted" {
+    var mt = MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var t = mt.transport();
+    try std.testing.expectError(error.NotStarted, t.resize(132, 50));
 }
 
 test "control records last signal" {
