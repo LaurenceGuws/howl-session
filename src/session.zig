@@ -118,3 +118,58 @@ test "control is callable" {
     defer s.deinit();
     s.control(.hangup);
 }
+
+test "feed accumulates, apply drains in full" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    defer s.deinit();
+    try s.feed("abc");
+    try s.feed("de");
+    try std.testing.expectEqual(@as(usize, 5), s.apply());
+    try std.testing.expectEqual(@as(usize, 0), s.apply());
+}
+
+test "apply returns 0 on empty queue" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    defer s.deinit();
+    try std.testing.expectEqual(@as(usize, 0), s.apply());
+}
+
+test "reset clears queue, apply returns 0" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    defer s.deinit();
+    try s.feed("queued");
+    s.reset();
+    try std.testing.expectEqual(@as(usize, 0), s.apply());
+}
+
+test "reset does not alter dimensions" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    defer s.deinit();
+    try s.feed("data");
+    s.reset();
+    try std.testing.expectEqual(@as(u16, 80), s.cols);
+    try std.testing.expectEqual(@as(u16, 24), s.rows);
+}
+
+test "resize idempotent on same dimensions" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    defer s.deinit();
+    try s.resize(80, 24);
+    try std.testing.expectEqual(@as(u16, 80), s.cols);
+    try std.testing.expectEqual(@as(u16, 24), s.rows);
+}
+
+test "control accepts all signal variants" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    defer s.deinit();
+    s.control(.hangup);
+    s.control(.interrupt);
+    s.control(.terminate);
+    s.control(.resize_notify);
+}
+
+test "status is idle after init" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    defer s.deinit();
+    try std.testing.expectEqual(SessionStatus.idle, s.status);
+}
