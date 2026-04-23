@@ -27,17 +27,26 @@
 | M1-C3: Capacity tests + queue closeout | done | 20ae2e9 |
 | M1-C review fix | done | b851cba |
 
-## M2-A Batch — DONE
+## M2-A Batch — DONE (accepted after review)
 
 | Ticket | Status | Commit |
 | --- | --- | --- |
 | M2-A1: Transport contract baseline | done | 2c7b098 |
 | M2-A2: In-memory transport adapter scaffold | done | eb483b1 |
-| M2-A3: Transport boundary tests + queue closeout | done | (this commit) |
+| M2-A3: Transport boundary tests + queue closeout | done | 6cb9455 |
+| M2-A review fix | done | 695b496 |
+
+## M2-B Batch — DONE
+
+| Ticket | Status | Commit |
+| --- | --- | --- |
+| M2-B1: Session lifecycle transport hooks (start/stop) | done | f71f9af |
+| M2-B2: Wire resize and control through transport | done | a271282 |
+| M2-B3: Integration tests and queue closeout | done | (this commit) |
 
 ## Outstanding
 
-Awaiting architect publication of M2-B batch.
+Awaiting architect publication of next batch.
 
 Candidate next scope (not started, not decided):
-- M2-B: Transport lifecycle integration — wire Session start/stop/resize/control through to Transport.
+- M3: Lifecycle Safety — startup/shutdown/restart/error boundaries explicit and tested.

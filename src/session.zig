@@ -230,3 +230,119 @@ test "feed up to exact capacity succeeds" {
     try s.feed("def");
     try std.testing.expectEqual(@as(usize, 6), s.apply());
 }
+
+test "start with null transport is no-op and succeeds" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    try s.start();
+    try std.testing.expectEqual(SessionStatus.active, s.status);
+}
+
+test "stop with null transport is no-op and sets stopped" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    s.stop();
+    try std.testing.expectEqual(SessionStatus.stopped, s.status);
+}
+
+test "start with MemTransport delegates to transport" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80,
+        .rows = 24,
+        .pending_capacity = 4096,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+    try s.start();
+    try std.testing.expect(mt.started);
+    try std.testing.expectEqual(SessionStatus.active, s.status);
+}
+
+test "stop with MemTransport delegates to transport" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80,
+        .rows = 24,
+        .pending_capacity = 4096,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+    try s.start();
+    s.stop();
+    try std.testing.expect(!mt.started);
+    try std.testing.expectEqual(SessionStatus.stopped, s.status);
+}
+
+test "resize with transport delegates dims and notifies" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80,
+        .rows = 24,
+        .pending_capacity = 4096,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+    try s.start();
+    try s.resize(132, 50);
+    try std.testing.expectEqual(@as(u16, 132), s.cols);
+    try std.testing.expectEqual(@as(u16, 50), s.rows);
+    try std.testing.expectEqual(@as(u16, 132), mt.last_cols);
+    try std.testing.expectEqual(@as(u16, 50), mt.last_rows);
+}
+
+test "resize without transport still updates session dimensions" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    try s.resize(120, 40);
+    try std.testing.expectEqual(@as(u16, 120), s.cols);
+    try std.testing.expectEqual(@as(u16, 40), s.rows);
+}
+
+test "control with transport routes signal" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80,
+        .rows = 24,
+        .pending_capacity = 4096,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+    s.control(.terminate);
+    try std.testing.expectEqual(ControlSignal.terminate, mt.last_signal.?);
+}
+
+test "control without transport is no-op" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    s.control(.hangup);
+}
+
+test "feed/apply/reset unaffected by transport attachment" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80,
+        .rows = 24,
+        .pending_capacity = 8,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+    try s.start();
+    try s.feed("abc");
+    try s.feed("de");
+    try std.testing.expectEqual(@as(usize, 5), s.apply());
+    try s.feed("xyz");
+    s.reset();
+    try std.testing.expectEqual(@as(usize, 0), s.apply());
+    try std.testing.expectError(error.QueueFull, s.feed("123456789"));
+}
