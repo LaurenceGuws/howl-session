@@ -6,3 +6,4 @@ pub const SessionStatus = session.SessionStatus;
 pub const transport = @import("transport.zig");
 pub const Transport = transport.Transport;
 pub const MemTransport = transport.MemTransport;
+pub const FailTransport = transport.FailTransport;
