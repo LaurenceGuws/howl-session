@@ -68,15 +68,15 @@ pub const Session = struct {
         self.pending.clearRetainingCapacity();
     }
 
-    pub fn resize(self: *Session, cols: u16, rows: u16) error{InvalidDimensions}!void {
+    pub fn resize(self: *Session, cols: u16, rows: u16) anyerror!void {
         if (cols == 0 or rows == 0) return error.InvalidDimensions;
         self.cols = cols;
         self.rows = rows;
+        if (self.transport) |t| try t.resize(cols, rows);
     }
 
     pub fn control(self: *Session, signal: ControlSignal) void {
-        _ = self;
-        _ = signal;
+        if (self.transport) |t| t.control(signal);
     }
 };
 

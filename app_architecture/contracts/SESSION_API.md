@@ -97,18 +97,19 @@ Typed enum of observable session states:
 
 ### resize
 
-- Caller delivers new terminal dimensions (columns × rows).
-- Session propagates resize to transport and terminal engine.
-- Dimensions must be non-zero; zero-dimension resize is a contract violation.
+- Signature: `resize(cols: u16, rows: u16) anyerror!void`
+- Dimensions must be non-zero; zero-dimension resize returns `error.InvalidDimensions`.
+- Session dimension state (`cols`, `rows`) is updated before transport notification; session dims are authoritative.
+- If a transport is attached, delegates to `transport.resize()`; transport errors are propagated.
+- With no transport attached, always succeeds after updating dims.
 - Idempotent: resize to current dimensions is a no-op.
 
 ### control
 
 - Signature: `control(signal: ControlSignal) void`
 - Caller delivers a typed `ControlSignal` value.
-- Session routes the signal to the transport layer only.
+- If a transport is attached, delegates to `transport.control()`; no-op otherwise.
 - No terminal semantic reinterpretation; signal semantics are transport-defined.
-- Call only valid between init and deinit.
 
 ## Stop Conditions
 
