@@ -47,7 +47,8 @@ pub const Session = struct {
     }
 
     pub fn feed(self: *Session, bytes: []const u8) error{ OutOfMemory, QueueFull }!void {
-        if (self.pending.items.len + bytes.len > self.pending_capacity) return error.QueueFull;
+        const projected_len = std.math.add(usize, self.pending.items.len, bytes.len) catch return error.QueueFull;
+        if (projected_len > self.pending_capacity) return error.QueueFull;
         try self.pending.appendSlice(self.allocator, bytes);
     }
 
