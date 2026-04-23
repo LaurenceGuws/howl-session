@@ -17,6 +17,7 @@ pub const Config = struct {
     allocator: std.mem.Allocator,
     cols: u16,
     rows: u16,
+    pending_capacity: usize,
 };
 
 pub const Session = struct {
@@ -25,15 +26,18 @@ pub const Session = struct {
     rows: u16,
     status: SessionStatus,
     pending: std.ArrayListUnmanaged(u8),
+    pending_capacity: usize,
 
     pub fn init(config: Config) error{InvalidConfig}!Session {
         if (config.cols == 0 or config.rows == 0) return error.InvalidConfig;
+        if (config.pending_capacity == 0) return error.InvalidConfig;
         return .{
             .allocator = config.allocator,
             .cols = config.cols,
             .rows = config.rows,
             .status = .idle,
             .pending = .empty,
+            .pending_capacity = config.pending_capacity,
         };
     }
 
@@ -42,7 +46,8 @@ pub const Session = struct {
         self.* = undefined;
     }
 
-    pub fn feed(self: *Session, bytes: []const u8) error{OutOfMemory}!void {
+    pub fn feed(self: *Session, bytes: []const u8) error{ OutOfMemory, QueueFull }!void {
+        if (self.pending.items.len + bytes.len > self.pending_capacity) return error.QueueFull;
         try self.pending.appendSlice(self.allocator, bytes);
     }
 
@@ -69,44 +74,44 @@ pub const Session = struct {
 };
 
 test "init rejects zero cols" {
-    const result = Session.init(.{ .allocator = std.testing.allocator, .cols = 0, .rows = 24 });
+    const result = Session.init(.{ .allocator = std.testing.allocator, .cols = 0, .rows = 24, .pending_capacity = 4096 });
     try std.testing.expectError(error.InvalidConfig, result);
 }
 
 test "init rejects zero rows" {
-    const result = Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 0 });
+    const result = Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 0, .pending_capacity = 4096 });
     try std.testing.expectError(error.InvalidConfig, result);
 }
 
 test "init succeeds with valid config" {
-    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
     defer s.deinit();
     try std.testing.expectEqual(@as(u16, 80), s.cols);
     try std.testing.expectEqual(@as(u16, 24), s.rows);
 }
 
 test "feed and apply are callable" {
-    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
     defer s.deinit();
     try s.feed("hello");
     try std.testing.expectEqual(@as(usize, 5), s.apply());
 }
 
 test "reset is callable" {
-    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
     defer s.deinit();
     s.reset();
 }
 
 test "resize rejects zero dimensions" {
-    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
     defer s.deinit();
     try std.testing.expectError(error.InvalidDimensions, s.resize(0, 24));
     try std.testing.expectError(error.InvalidDimensions, s.resize(80, 0));
 }
 
 test "resize updates dimensions" {
-    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
     defer s.deinit();
     try s.resize(132, 50);
     try std.testing.expectEqual(@as(u16, 132), s.cols);
@@ -114,13 +119,13 @@ test "resize updates dimensions" {
 }
 
 test "control is callable" {
-    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
     defer s.deinit();
     s.control(.hangup);
 }
 
 test "feed accumulates, apply drains in full" {
-    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
     defer s.deinit();
     try s.feed("abc");
     try s.feed("de");
@@ -129,13 +134,13 @@ test "feed accumulates, apply drains in full" {
 }
 
 test "apply returns 0 on empty queue" {
-    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
     defer s.deinit();
     try std.testing.expectEqual(@as(usize, 0), s.apply());
 }
 
 test "reset clears queue, apply returns 0" {
-    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
     defer s.deinit();
     try s.feed("queued");
     s.reset();
@@ -143,7 +148,7 @@ test "reset clears queue, apply returns 0" {
 }
 
 test "reset does not alter dimensions" {
-    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
     defer s.deinit();
     try s.feed("data");
     s.reset();
@@ -152,7 +157,7 @@ test "reset does not alter dimensions" {
 }
 
 test "resize idempotent on same dimensions" {
-    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
     defer s.deinit();
     try s.resize(80, 24);
     try std.testing.expectEqual(@as(u16, 80), s.cols);
@@ -160,7 +165,7 @@ test "resize idempotent on same dimensions" {
 }
 
 test "control accepts all signal variants" {
-    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
     defer s.deinit();
     s.control(.hangup);
     s.control(.interrupt);
@@ -169,7 +174,7 @@ test "control accepts all signal variants" {
 }
 
 test "status is idle after init" {
-    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
     defer s.deinit();
     try std.testing.expectEqual(SessionStatus.idle, s.status);
 }
