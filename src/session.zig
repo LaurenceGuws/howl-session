@@ -49,3 +49,54 @@ pub const Session = struct {
         _ = signal;
     }
 };
+
+test "init rejects zero cols" {
+    const result = Session.init(.{ .allocator = std.testing.allocator, .cols = 0, .rows = 24 });
+    try std.testing.expectError(error.InvalidConfig, result);
+}
+
+test "init rejects zero rows" {
+    const result = Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 0 });
+    try std.testing.expectError(error.InvalidConfig, result);
+}
+
+test "init succeeds with valid config" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    defer s.deinit();
+    try std.testing.expectEqual(@as(u16, 80), s.cols);
+    try std.testing.expectEqual(@as(u16, 24), s.rows);
+}
+
+test "feed and apply are callable" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    defer s.deinit();
+    s.feed("hello");
+    try std.testing.expectEqual(@as(usize, 0), s.apply());
+}
+
+test "reset is callable" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    defer s.deinit();
+    s.reset();
+}
+
+test "resize rejects zero dimensions" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    defer s.deinit();
+    try std.testing.expectError(error.InvalidDimensions, s.resize(0, 24));
+    try std.testing.expectError(error.InvalidDimensions, s.resize(80, 0));
+}
+
+test "resize updates dimensions" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    defer s.deinit();
+    try s.resize(132, 50);
+    try std.testing.expectEqual(@as(u16, 132), s.cols);
+    try std.testing.expectEqual(@as(u16, 50), s.rows);
+}
+
+test "control is callable" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
+    defer s.deinit();
+    s.control(1);
+}
