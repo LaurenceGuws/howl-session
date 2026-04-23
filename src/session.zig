@@ -567,3 +567,105 @@ test "feed/apply/reset unaffected after start failure" {
     s.reset();
     try std.testing.expectEqual(@as(usize, 0), s.apply());
 }
+
+test "resize_count zero at init" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    try std.testing.expectEqual(@as(u32, 0), s.resize_count);
+}
+
+test "resize increments counter on each valid call" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    try s.resize(100, 40);
+    try std.testing.expectEqual(@as(u32, 1), s.resize_count);
+    try s.resize(132, 50);
+    try std.testing.expectEqual(@as(u32, 2), s.resize_count);
+    try s.resize(80, 24);
+    try std.testing.expectEqual(@as(u32, 3), s.resize_count);
+}
+
+test "resize to same dims still increments counter" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    try s.resize(80, 24);
+    try s.resize(80, 24);
+    try std.testing.expectEqual(@as(u32, 2), s.resize_count);
+}
+
+test "failed resize still increments counter and retains dims" {
+    var ft = transport_mod.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = ft.transport(),
+    });
+    defer s.deinit();
+    try std.testing.expectError(error.TransportFailed, s.resize(132, 50));
+    try std.testing.expectEqual(@as(u32, 1), s.resize_count);
+    try std.testing.expectEqual(@as(u16, 132), s.cols);
+    try std.testing.expectEqual(@as(u16, 50), s.rows);
+}
+
+test "invalid resize does not increment counter" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    try std.testing.expectError(error.InvalidDimensions, s.resize(0, 24));
+    try std.testing.expectError(error.InvalidDimensions, s.resize(80, 0));
+    try std.testing.expectEqual(@as(u32, 0), s.resize_count);
+}
+
+test "last_control_signal null at init" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    try std.testing.expectEqual(@as(?ControlSignal, null), s.last_control_signal);
+}
+
+test "control records last signal without transport" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    s.control(.hangup);
+    try std.testing.expectEqual(ControlSignal.hangup, s.last_control_signal.?);
+    s.control(.terminate);
+    try std.testing.expectEqual(ControlSignal.terminate, s.last_control_signal.?);
+}
+
+test "control records last signal with transport" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+    s.control(.interrupt);
+    try std.testing.expectEqual(ControlSignal.interrupt, s.last_control_signal.?);
+    try std.testing.expectEqual(ControlSignal.interrupt, mt.last_signal.?);
+}
+
+test "control with FailTransport still records signal on session" {
+    var ft = transport_mod.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = ft.transport(),
+    });
+    defer s.deinit();
+    s.control(.resize_notify);
+    try std.testing.expectEqual(ControlSignal.resize_notify, s.last_control_signal.?);
+}
+
+test "resize and control do not affect queue semantics" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 64 });
+    defer s.deinit();
+    try s.feed("before");
+    try s.resize(100, 40);
+    s.control(.hangup);
+    try s.feed("after");
+    try std.testing.expectEqual(@as(usize, 11), s.apply());
+    try std.testing.expectEqual(@as(u32, 1), s.resize_count);
+    try std.testing.expectEqual(ControlSignal.hangup, s.last_control_signal.?);
+}

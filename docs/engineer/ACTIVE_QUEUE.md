@@ -53,17 +53,25 @@
 | M3-A2: Enforce lifecycle state transitions | done | deb1ebd |
 | M3-A3: Lifecycle transition tests + queue closeout | done | 57769a7 |
 
-## M3-B Batch — DONE
+## M3-B Batch — DONE (accepted, no review fix)
 
 | Ticket | Status | Commit |
 | --- | --- | --- |
 | M3-B1: Session error-boundary contract closure | done | 10b311f |
 | M3-B2: Add FailTransport adapter for error-boundary enforcement | done | eafa3b2 |
-| M3-B3: Failure-path tests + queue closeout | done | (this commit) |
+| M3-B3: Failure-path tests + queue closeout | done | fb4a368 |
+
+## M4-A Batch — DONE
+
+| Ticket | Status | Commit |
+| --- | --- | --- |
+| M4-A1: Resize/control contract closure with sequencing guarantees | done | 6c61d64 |
+| M4-A2: Add resize_count and last_control_signal observability fields | done | 0ac0824 |
+| M4-A3: Integration tests + queue closeout | done | (this commit) |
 
 ## Outstanding
 
 Awaiting architect publication of next batch.
 
 Candidate next scope (not started, not decided):
-- M4: Resize and Control Flow — deterministic resize/control paths, contract-backed.
+- M5: Host Integration Readiness — stable host-facing API for multiple host adapters.
