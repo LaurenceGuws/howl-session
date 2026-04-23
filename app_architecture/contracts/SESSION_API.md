@@ -146,6 +146,25 @@ Any state ──deinit()──► (destroyed)
 - If a transport is attached, delegates to `transport.control()`; no-op otherwise.
 - No terminal semantic reinterpretation; signal semantics are transport-defined.
 
+## Error Boundaries
+
+### start() transport failure
+
+- If `transport.start()` returns an error, the error is propagated to the caller.
+- `status` remains unchanged (does not transition to `active`).
+- The session is left in a consistent state; retry via `start()` is valid.
+
+### resize() transport failure
+
+- If `transport.resize()` returns an error, the error is propagated to the caller.
+- Session `cols` and `rows` are retained at the new values; session dims are authoritative regardless of transport outcome.
+- Caller receives the transport error as evidence of notification failure, not a dimension rejection.
+
+### read/write delegation (future)
+
+- When session gains explicit read/write delegation, failure post-conditions will follow the same pattern: propagate error, leave session queue state unchanged.
+- Placeholder: no session queue mutation occurs on a failed delegation.
+
 ## Stop Conditions
 
 Engineer must stop and report if any API boundary requires:
