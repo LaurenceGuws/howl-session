@@ -18,17 +18,26 @@
 | M1-B3: Contract tests for queue/reset/resize/control | done | b01833a |
 | M1-B review fix | done | e4493be |
 
-## M1-C Batch — DONE
+## M1-C Batch — DONE (accepted after review)
 
 | Ticket | Status | Commit |
 | --- | --- | --- |
 | M1-C1: Queue capacity contract and config field spec | done | 3a363b9 |
 | M1-C2: Bounded queue enforcement with QueueFull | done | 0b6a98b |
-| M1-C3: Capacity tests + queue closeout | done | (this commit) |
+| M1-C3: Capacity tests + queue closeout | done | 20ae2e9 |
+| M1-C review fix | done | b851cba |
+
+## M2-A Batch — DONE
+
+| Ticket | Status | Commit |
+| --- | --- | --- |
+| M2-A1: Transport contract baseline | done | 2c7b098 |
+| M2-A2: In-memory transport adapter scaffold | done | eb483b1 |
+| M2-A3: Transport boundary tests + queue closeout | done | (this commit) |
 
 ## Outstanding
 
-Awaiting architect publication of next batch.
+Awaiting architect publication of M2-B batch.
 
 Candidate next scope (not started, not decided):
-- M2: Transport Foundation — PTY/process transport lifecycle.
+- M2-B: Transport lifecycle integration — wire Session start/stop/resize/control through to Transport.

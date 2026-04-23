@@ -119,3 +119,118 @@ pub const MemTransport = struct {
         self.last_signal = signal;
     }
 };
+
+test "start activates transport" {
+    var mt = MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var t = mt.transport();
+    try std.testing.expect(!mt.started);
+    try t.start();
+    try std.testing.expect(mt.started);
+}
+
+test "start twice returns AlreadyStarted" {
+    var mt = MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var t = mt.transport();
+    try t.start();
+    try std.testing.expectError(error.AlreadyStarted, t.start());
+}
+
+test "stop deactivates transport" {
+    var mt = MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var t = mt.transport();
+    try t.start();
+    t.stop();
+    try std.testing.expect(!mt.started);
+}
+
+test "stop on idle transport is safe" {
+    var mt = MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var t = mt.transport();
+    t.stop();
+    try std.testing.expect(!mt.started);
+}
+
+test "write appends to tx buffer" {
+    var mt = MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var t = mt.transport();
+    try t.start();
+    const n = try t.write("hello");
+    try std.testing.expectEqual(@as(usize, 5), n);
+    try std.testing.expectEqualSlices(u8, "hello", mt.tx.items);
+}
+
+test "read drains rx buffer" {
+    var mt = MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var t = mt.transport();
+    try t.start();
+    try mt.rx.appendSlice(std.testing.allocator, "world");
+    var buf: [8]u8 = undefined;
+    const n = try t.read(&buf);
+    try std.testing.expectEqual(@as(usize, 5), n);
+    try std.testing.expectEqualSlices(u8, "world", buf[0..n]);
+    try std.testing.expectEqual(@as(usize, 0), mt.rx.items.len);
+}
+
+test "read on empty rx returns 0" {
+    var mt = MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var t = mt.transport();
+    try t.start();
+    var buf: [8]u8 = undefined;
+    const n = try t.read(&buf);
+    try std.testing.expectEqual(@as(usize, 0), n);
+}
+
+test "read partial drains only up to buf size" {
+    var mt = MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var t = mt.transport();
+    try t.start();
+    try mt.rx.appendSlice(std.testing.allocator, "abcdef");
+    var buf: [3]u8 = undefined;
+    const n = try t.read(&buf);
+    try std.testing.expectEqual(@as(usize, 3), n);
+    try std.testing.expectEqualSlices(u8, "abc", buf[0..n]);
+    try std.testing.expectEqualSlices(u8, "def", mt.rx.items);
+}
+
+test "resize records last dimensions" {
+    var mt = MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var t = mt.transport();
+    try t.start();
+    try t.resize(132, 50);
+    try std.testing.expectEqual(@as(u16, 132), mt.last_cols);
+    try std.testing.expectEqual(@as(u16, 50), mt.last_rows);
+}
+
+test "control records last signal" {
+    var mt = MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var t = mt.transport();
+    try t.start();
+    t.control(.interrupt);
+    try std.testing.expectEqual(ControlSignal.interrupt, mt.last_signal.?);
+}
+
+test "session holds transport reference" {
+    const session_mod = @import("session.zig");
+    var mt = MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    const t = mt.transport();
+    var s = try session_mod.Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80,
+        .rows = 24,
+        .pending_capacity = 4096,
+        .transport = t,
+    });
+    defer s.deinit();
+    try std.testing.expect(s.transport != null);
+}
