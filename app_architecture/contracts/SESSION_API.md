@@ -5,6 +5,23 @@
 This contract defines lifecycle and ownership boundaries for `howl-session`.
 It does not define SDL types, renderer types, or terminal semantics.
 
+## Types
+
+### `ControlSignal`
+
+Typed enum of control signals routable to the transport layer:
+- `hangup` — transport peer disconnect equivalent (SIGHUP)
+- `interrupt` — interrupt signal equivalent (SIGINT)
+- `terminate` — graceful termination equivalent (SIGTERM)
+- `resize_notify` — window resize notification (SIGWINCH)
+
+### `SessionStatus`
+
+Typed enum of observable session states:
+- `idle` — session initialized, no active transport
+- `active` — transport running
+- `stopped` — transport stopped; session awaiting deinit or restart
+
 ## Ownership Boundaries
 
 - `howl-session` owns session lifecycle and transport orchestration.
@@ -60,7 +77,8 @@ It does not define SDL types, renderer types, or terminal semantics.
 
 ### control
 
-- Caller delivers a control signal (e.g., SIGWINCH, SIGHUP equivalent).
+- Signature: `control(signal: ControlSignal) void`
+- Caller delivers a typed `ControlSignal` value.
 - Session routes the signal to the transport layer only.
 - No terminal semantic reinterpretation; signal semantics are transport-defined.
 - Call only valid between init and deinit.

@@ -1,5 +1,18 @@
 const std = @import("std");
 
+pub const ControlSignal = enum {
+    hangup,
+    interrupt,
+    terminate,
+    resize_notify,
+};
+
+pub const SessionStatus = enum {
+    idle,
+    active,
+    stopped,
+};
+
 pub const Config = struct {
     allocator: std.mem.Allocator,
     cols: u16,
@@ -44,7 +57,7 @@ pub const Session = struct {
         self.rows = rows;
     }
 
-    pub fn control(self: *Session, signal: u8) void {
+    pub fn control(self: *Session, signal: ControlSignal) void {
         _ = self;
         _ = signal;
     }
@@ -98,5 +111,5 @@ test "resize updates dimensions" {
 test "control is callable" {
     var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
     defer s.deinit();
-    s.control(1);
+    s.control(.hangup);
 }
