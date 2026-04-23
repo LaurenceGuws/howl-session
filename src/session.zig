@@ -43,12 +43,15 @@ pub const Session = struct {
     }
 
     pub fn start(self: *Session) anyerror!void {
+        if (self.status == .active) return error.AlreadyStarted;
         if (self.transport) |t| try t.start();
         self.status = .active;
     }
 
     pub fn stop(self: *Session) void {
-        if (self.transport) |t| t.stop();
+        if (self.status == .active) {
+            if (self.transport) |t| t.stop();
+        }
         self.status = .stopped;
     }
 
