@@ -42,6 +42,16 @@ pub const Session = struct {
         self.* = undefined;
     }
 
+    pub fn start(self: *Session) anyerror!void {
+        if (self.transport) |t| try t.start();
+        self.status = .active;
+    }
+
+    pub fn stop(self: *Session) void {
+        if (self.transport) |t| t.stop();
+        self.status = .stopped;
+    }
+
     pub fn feed(self: *Session, bytes: []const u8) error{ OutOfMemory, QueueFull }!void {
         const projected_len = std.math.add(usize, self.pending.items.len, bytes.len) catch return error.QueueFull;
         if (projected_len > self.pending_capacity) return error.QueueFull;

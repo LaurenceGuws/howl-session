@@ -46,6 +46,22 @@ Typed enum of observable session states:
 - Does not start PTY, transport, or terminal engine; init only allocates and validates config.
 - Error on invalid config (`cols == 0`, `rows == 0`, or `pending_capacity == 0`); no partial-init state is observable.
 
+### start
+
+- Signature: `start() anyerror!void`
+- Activates the session; if a transport is attached, delegates to `transport.start()`.
+- On success, `status` transitions from `idle` to `active`.
+- If transport start fails, the error is propagated and `status` remains `idle`.
+- With no transport attached, always succeeds and transitions status to `active`.
+
+### stop
+
+- Signature: `stop() void`
+- Deactivates the session; if a transport is attached, delegates to `transport.stop()`.
+- `status` transitions to `stopped` unconditionally.
+- With no transport attached, always succeeds.
+- Idempotent: calling stop on an already-stopped session is safe.
+
 ### deinit
 
 - Releases all session-owned resources.
