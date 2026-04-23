@@ -33,7 +33,7 @@ Typed enum of observable session states:
 ### init
 
 - Caller provides allocator and configuration (opaque to host toolkit).
-- Returns an opaque session handle.
+- Returns a `Session` handle.
 - Does not start PTY, transport, or terminal engine; init only allocates and validates config.
 - Error on invalid config; no partial-init state is observable.
 

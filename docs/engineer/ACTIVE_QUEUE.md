@@ -14,7 +14,7 @@
 | Ticket | Status | Commit |
 | --- | --- | --- |
 | M1-B1: Typed ControlSignal and SessionStatus primitives | done | dc94764 |
-| M1-B2: Bounded in-memory pending queue for feed/apply | done | 59af601 |
+| M1-B2: In-memory pending queue for feed/apply | done | 59af601 |
 | M1-B3: Contract tests for queue/reset/resize/control | done | (this commit) |
 
 ## Outstanding
