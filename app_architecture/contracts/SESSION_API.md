@@ -28,6 +28,15 @@ Typed enum of observable session states:
 - `howl-terminal` owns terminal semantics; session consumes its public API only.
 - Host apps own SDL/window/input/renderer concerns; session is host-neutral.
 
+## Config Fields
+
+| Field | Type | Constraint | Meaning |
+| --- | --- | --- | --- |
+| `allocator` | `std.mem.Allocator` | required | Allocator for all session-owned memory |
+| `cols` | `u16` | non-zero | Initial terminal width in columns |
+| `rows` | `u16` | non-zero | Initial terminal height in rows |
+| `pending_capacity` | `usize` | non-zero | Maximum byte capacity of the in-memory pending queue |
+
 ## Lifecycle Boundaries
 
 ### init
@@ -35,7 +44,7 @@ Typed enum of observable session states:
 - Caller provides allocator and configuration (opaque to host toolkit).
 - Returns a `Session` handle.
 - Does not start PTY, transport, or terminal engine; init only allocates and validates config.
-- Error on invalid config; no partial-init state is observable.
+- Error on invalid config (`cols == 0`, `rows == 0`, or `pending_capacity == 0`); no partial-init state is observable.
 
 ### deinit
 
@@ -48,9 +57,10 @@ Typed enum of observable session states:
 
 ### feed
 
-- Signature: `feed(bytes: []const u8) error{OutOfMemory}!void`
+- Signature: `feed(bytes: []const u8) error{OutOfMemory, QueueFull}!void`
 - Caller delivers raw input bytes into the session.
 - Session appends bytes to the in-memory pending queue; no terminal semantic interpretation.
+- Overflow check is atomic: if `pending.len + bytes.len > pending_capacity`, returns `error.QueueFull` and no bytes are written.
 - Returns `error.OutOfMemory` if queue allocation fails; caller must handle.
 - Call only valid between init and deinit; calling outside this window is a contract violation.
 
