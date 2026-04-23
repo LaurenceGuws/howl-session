@@ -1,10 +1,8 @@
 const std = @import("std");
-const howl_session = @import("howl_session");
 
 pub fn main() !void {
     // Prints to stderr, ignoring potential errors.
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
-    try howl_session.bufferedPrint();
+    std.debug.print("howl-session\n", .{});
 }
 
 test "simple test" {
