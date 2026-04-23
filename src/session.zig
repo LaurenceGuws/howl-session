@@ -178,3 +178,48 @@ test "status is idle after init" {
     defer s.deinit();
     try std.testing.expectEqual(SessionStatus.idle, s.status);
 }
+
+test "init rejects zero pending_capacity" {
+    const result = Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 0 });
+    try std.testing.expectError(error.InvalidConfig, result);
+}
+
+test "feed overflow returns QueueFull" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 8 });
+    defer s.deinit();
+    try std.testing.expectError(error.QueueFull, s.feed("123456789"));
+}
+
+test "feed overflow is atomic: no partial write" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4 });
+    defer s.deinit();
+    try s.feed("ab");
+    try std.testing.expectError(error.QueueFull, s.feed("cde"));
+    try std.testing.expectEqual(@as(usize, 2), s.apply());
+}
+
+test "apply after overflow drains only accepted bytes" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 5 });
+    defer s.deinit();
+    try s.feed("hello");
+    try std.testing.expectError(error.QueueFull, s.feed("!"));
+    try std.testing.expectEqual(@as(usize, 5), s.apply());
+}
+
+test "reset clears full queue, feed succeeds again" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4 });
+    defer s.deinit();
+    try s.feed("abcd");
+    try std.testing.expectError(error.QueueFull, s.feed("e"));
+    s.reset();
+    try s.feed("xy");
+    try std.testing.expectEqual(@as(usize, 2), s.apply());
+}
+
+test "feed up to exact capacity succeeds" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 6 });
+    defer s.deinit();
+    try s.feed("abc");
+    try s.feed("def");
+    try std.testing.expectEqual(@as(usize, 6), s.apply());
+}

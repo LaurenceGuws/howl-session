@@ -9,17 +9,26 @@
 | M1-A3: Baseline tests + queue closeout | done | 426e897 |
 | M1-A review fix | done | f3d065a |
 
-## M1-B Batch — DONE
+## M1-B Batch — DONE (accepted after review)
 
 | Ticket | Status | Commit |
 | --- | --- | --- |
 | M1-B1: Typed ControlSignal and SessionStatus primitives | done | dc94764 |
 | M1-B2: In-memory pending queue for feed/apply | done | 59af601 |
-| M1-B3: Contract tests for queue/reset/resize/control | done | (this commit) |
+| M1-B3: Contract tests for queue/reset/resize/control | done | b01833a |
+| M1-B review fix | done | e4493be |
+
+## M1-C Batch — DONE
+
+| Ticket | Status | Commit |
+| --- | --- | --- |
+| M1-C1: Queue capacity contract and config field spec | done | 3a363b9 |
+| M1-C2: Bounded queue enforcement with QueueFull | done | 0b6a98b |
+| M1-C3: Capacity tests + queue closeout | done | (this commit) |
 
 ## Outstanding
 
-Awaiting architect publication of M1-C or M2 batch.
+Awaiting architect publication of next batch.
 
 Candidate next scope (not started, not decided):
 - M2: Transport Foundation — PTY/process transport lifecycle.
