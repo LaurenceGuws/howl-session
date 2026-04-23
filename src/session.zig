@@ -22,6 +22,8 @@ pub const Session = struct {
     pending: std.ArrayListUnmanaged(u8),
     pending_capacity: usize,
     transport: ?Transport,
+    resize_count: u32,
+    last_control_signal: ?ControlSignal,
 
     pub fn init(config: Config) error{InvalidConfig}!Session {
         if (config.cols == 0 or config.rows == 0) return error.InvalidConfig;
@@ -34,6 +36,8 @@ pub const Session = struct {
             .pending = .empty,
             .pending_capacity = config.pending_capacity,
             .transport = config.transport,
+            .resize_count = 0,
+            .last_control_signal = null,
         };
     }
 
@@ -75,10 +79,12 @@ pub const Session = struct {
         if (cols == 0 or rows == 0) return error.InvalidDimensions;
         self.cols = cols;
         self.rows = rows;
+        self.resize_count +%= 1;
         if (self.transport) |t| try t.resize(cols, rows);
     }
 
     pub fn control(self: *Session, signal: ControlSignal) void {
+        self.last_control_signal = signal;
         if (self.transport) |t| t.control(signal);
     }
 };
