@@ -45,17 +45,25 @@
 | M2-B3: Integration tests and queue closeout | done | a0c0bd5 |
 | M2-B review fix | done | 4adb009 |
 
-## M3-A Batch — DONE
+## M3-A Batch — DONE (accepted, no review fix)
 
 | Ticket | Status | Commit |
 | --- | --- | --- |
 | M3-A1: Lifecycle safety contract closure with state machine | done | 23ab51a |
 | M3-A2: Enforce lifecycle state transitions | done | deb1ebd |
-| M3-A3: Lifecycle transition tests + queue closeout | done | (this commit) |
+| M3-A3: Lifecycle transition tests + queue closeout | done | 57769a7 |
+
+## M3-B Batch — DONE
+
+| Ticket | Status | Commit |
+| --- | --- | --- |
+| M3-B1: Session error-boundary contract closure | done | 10b311f |
+| M3-B2: Add FailTransport adapter for error-boundary enforcement | done | eafa3b2 |
+| M3-B3: Failure-path tests + queue closeout | done | (this commit) |
 
 ## Outstanding
 
 Awaiting architect publication of next batch.
 
 Candidate next scope (not started, not decided):
-- M3-B: Error boundary hardening — transport failure during active session, status recovery.
+- M4: Resize and Control Flow — deterministic resize/control paths, contract-backed.

@@ -470,3 +470,94 @@ test "full lifecycle cycle: idle-active-stopped-active" {
     try std.testing.expectEqual(SessionStatus.active, s.status);
     try std.testing.expect(mt.started);
 }
+
+test "start failure from idle leaves status idle" {
+    var ft = transport_mod.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = ft.transport(),
+    });
+    defer s.deinit();
+    try std.testing.expectError(error.TransportFailed, s.start());
+    try std.testing.expectEqual(SessionStatus.idle, s.status);
+}
+
+test "start failure from stopped leaves status stopped" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var ft = transport_mod.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+    try s.start();
+    s.stop();
+    s.transport = ft.transport();
+    try std.testing.expectError(error.TransportFailed, s.start());
+    try std.testing.expectEqual(SessionStatus.stopped, s.status);
+}
+
+test "start failure is repeatable and deterministic" {
+    var ft = transport_mod.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = ft.transport(),
+    });
+    defer s.deinit();
+    try std.testing.expectError(error.TransportFailed, s.start());
+    try std.testing.expectError(error.TransportFailed, s.start());
+    try std.testing.expectEqual(SessionStatus.idle, s.status);
+}
+
+test "resize failure retains updated dims" {
+    var ft = transport_mod.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = ft.transport(),
+    });
+    defer s.deinit();
+    try std.testing.expectError(error.TransportFailed, s.resize(132, 50));
+    try std.testing.expectEqual(@as(u16, 132), s.cols);
+    try std.testing.expectEqual(@as(u16, 50), s.rows);
+}
+
+test "resize failure is repeatable and deterministic" {
+    var ft = transport_mod.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = ft.transport(),
+    });
+    defer s.deinit();
+    try std.testing.expectError(error.TransportFailed, s.resize(100, 40));
+    try std.testing.expectError(error.TransportFailed, s.resize(120, 48));
+    try std.testing.expectEqual(@as(u16, 120), s.cols);
+    try std.testing.expectEqual(@as(u16, 48), s.rows);
+}
+
+test "feed/apply/reset unaffected after start failure" {
+    var ft = transport_mod.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = ft.transport(),
+    });
+    defer s.deinit();
+    try std.testing.expectError(error.TransportFailed, s.start());
+    try s.feed("hello");
+    try std.testing.expectEqual(@as(usize, 5), s.apply());
+    try s.feed("world");
+    s.reset();
+    try std.testing.expectEqual(@as(usize, 0), s.apply());
+}
