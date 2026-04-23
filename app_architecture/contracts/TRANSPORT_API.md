@@ -33,13 +33,13 @@ Error values that transport operations may return:
 ### start
 
 - Signature: `start() anyerror!void`
-- Activates the transport; subsequent write/read/resize/control calls are valid.
+- Activates the transport; subsequent write/read/resize calls are valid.
 - Returns `error.AlreadyStarted` if called on an active transport.
 
 ### stop
 
 - Signature: `stop() void`
-- Deactivates the transport; no write/read/resize/control calls valid after stop returns.
+- Deactivates the transport; write/read/resize are not valid after stop returns.
 - Idempotent on an already-stopped transport.
 
 ### write
@@ -67,7 +67,8 @@ Error values that transport operations may return:
 - Signature: `control(signal: ControlSignal) void`
 - Routes a typed control signal to the transport peer.
 - No terminal semantic reinterpretation; signal semantics are transport-defined.
-- Call only valid on a started transport.
+- Fire-and-forget: no error channel is provided.
+- Before start/after stop behavior is adapter-defined.
 
 ## Stop Conditions
 
