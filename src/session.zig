@@ -1,23 +1,17 @@
 const std = @import("std");
+const types = @import("types.zig");
+const transport_mod = @import("transport.zig");
 
-pub const ControlSignal = enum {
-    hangup,
-    interrupt,
-    terminate,
-    resize_notify,
-};
-
-pub const SessionStatus = enum {
-    idle,
-    active,
-    stopped,
-};
+pub const ControlSignal = types.ControlSignal;
+pub const SessionStatus = types.SessionStatus;
+pub const Transport = transport_mod.Transport;
 
 pub const Config = struct {
     allocator: std.mem.Allocator,
     cols: u16,
     rows: u16,
     pending_capacity: usize,
+    transport: ?Transport = null,
 };
 
 pub const Session = struct {
@@ -27,6 +21,7 @@ pub const Session = struct {
     status: SessionStatus,
     pending: std.ArrayListUnmanaged(u8),
     pending_capacity: usize,
+    transport: ?Transport,
 
     pub fn init(config: Config) error{InvalidConfig}!Session {
         if (config.cols == 0 or config.rows == 0) return error.InvalidConfig;
@@ -38,6 +33,7 @@ pub const Session = struct {
             .status = .idle,
             .pending = .empty,
             .pending_capacity = config.pending_capacity,
+            .transport = config.transport,
         };
     }
 
