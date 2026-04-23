@@ -48,22 +48,23 @@ Typed enum of observable session states:
 
 ### feed
 
+- Signature: `feed(bytes: []const u8) error{OutOfMemory}!void`
 - Caller delivers raw input bytes into the session.
-- Session queues bytes for transport delivery; no terminal semantic interpretation.
-- Back-pressure is the caller's responsibility; feed does not block indefinitely.
+- Session appends bytes to the in-memory pending queue; no terminal semantic interpretation.
+- Returns `error.OutOfMemory` if queue allocation fails; caller must handle.
 - Call only valid between init and deinit; calling outside this window is a contract violation.
 
 ### apply
 
-- Session applies a pending transport-delivered byte sequence to the terminal engine.
+- Signature: `apply() usize`
+- Drains the in-memory pending queue in full; no partial application.
+- Returns count of bytes consumed; returns 0 if queue was empty.
 - Caller drives apply; session does not self-trigger application.
-- Returns count of bytes consumed from the pending queue.
-- No-op (returns 0) if no pending bytes.
 
 ### reset
 
-- Resets session transport and queues to a clean-idle state.
-- Terminal engine state is preserved; reset is transport-layer only.
+- Signature: `reset() void`
+- Clears the in-memory pending queue; no terminal engine state is modified.
 - Safe to call at any point between init and deinit.
 
 ## Resize / Control Boundaries

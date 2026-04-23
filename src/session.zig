@@ -23,6 +23,8 @@ pub const Session = struct {
     allocator: std.mem.Allocator,
     cols: u16,
     rows: u16,
+    status: SessionStatus,
+    pending: std.ArrayListUnmanaged(u8),
 
     pub fn init(config: Config) error{InvalidConfig}!Session {
         if (config.cols == 0 or config.rows == 0) return error.InvalidConfig;
@@ -30,25 +32,28 @@ pub const Session = struct {
             .allocator = config.allocator,
             .cols = config.cols,
             .rows = config.rows,
+            .status = .idle,
+            .pending = .empty,
         };
     }
 
     pub fn deinit(self: *Session) void {
+        self.pending.deinit(self.allocator);
         self.* = undefined;
     }
 
-    pub fn feed(self: *Session, bytes: []const u8) void {
-        _ = self;
-        _ = bytes;
+    pub fn feed(self: *Session, bytes: []const u8) error{OutOfMemory}!void {
+        try self.pending.appendSlice(self.allocator, bytes);
     }
 
     pub fn apply(self: *Session) usize {
-        _ = self;
-        return 0;
+        const n = self.pending.items.len;
+        self.pending.clearRetainingCapacity();
+        return n;
     }
 
     pub fn reset(self: *Session) void {
-        _ = self;
+        self.pending.clearRetainingCapacity();
     }
 
     pub fn resize(self: *Session, cols: u16, rows: u16) error{InvalidDimensions}!void {
@@ -83,8 +88,8 @@ test "init succeeds with valid config" {
 test "feed and apply are callable" {
     var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24 });
     defer s.deinit();
-    s.feed("hello");
-    try std.testing.expectEqual(@as(usize, 0), s.apply());
+    try s.feed("hello");
+    try std.testing.expectEqual(@as(usize, 5), s.apply());
 }
 
 test "reset is callable" {
