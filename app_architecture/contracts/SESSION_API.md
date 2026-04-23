@@ -37,6 +37,40 @@ Typed enum of observable session states:
 | `rows` | `u16` | non-zero | Initial terminal height in rows |
 | `pending_capacity` | `usize` | non-zero | Maximum byte capacity of the in-memory pending queue |
 
+## State Machine
+
+```
+init
+ │
+ ▼
+idle ──start()──► active ──stop()──► stopped
+                              ▲          │
+                              └─start()──┘
+                              (restart)
+
+Any state ──deinit()──► (destroyed)
+```
+
+### Allowed Transitions
+
+| From | Event | To | Notes |
+| --- | --- | --- | --- |
+| `idle` | `start()` | `active` | normal activation |
+| `active` | `start()` | `active` | returns `error.AlreadyStarted`; no state change |
+| `active` | `stop()` | `stopped` | normal deactivation |
+| `idle` | `stop()` | `stopped` | safe; transport not called |
+| `stopped` | `stop()` | `stopped` | idempotent; transport not called |
+| `stopped` | `start()` | `active` | restart; transport.start() is called |
+| any | `deinit()` | (destroyed) | only on successfully initialized handle |
+
+### Repeated Call Behavior
+
+- `start()` from `active`: returns `error.AlreadyStarted`; transport is not called.
+- `stop()` from `idle` or `stopped`: sets status to `stopped`; transport is not called.
+- `start()` from `stopped`: restart path; transport.start() is called; transitions to `active` on success.
+- `feed/apply/reset`: valid in any state between init and deinit; no status check.
+- `control`: valid in any state between init and deinit; routes to transport if attached.
+
 ## Lifecycle Boundaries
 
 ### init
@@ -45,22 +79,23 @@ Typed enum of observable session states:
 - Returns a `Session` handle.
 - Does not start PTY, transport, or terminal engine; init only allocates and validates config.
 - Error on invalid config (`cols == 0`, `rows == 0`, or `pending_capacity == 0`); no partial-init state is observable.
+- Post-condition: `status == .idle`.
 
 ### start
 
 - Signature: `start() anyerror!void`
-- Activates the session; if a transport is attached, delegates to `transport.start()`.
-- On success, `status` transitions from `idle` to `active`.
-- If transport start fails, the error is propagated and `status` remains `idle`.
-- With no transport attached, always succeeds and transitions status to `active`.
+- From `idle` or `stopped`: activates session; delegates to `transport.start()` if attached.
+- From `active`: returns `error.AlreadyStarted` immediately; transport is not called; status unchanged.
+- On success, `status` transitions to `active`.
+- If transport start fails, the error is propagated and `status` remains unchanged.
 
 ### stop
 
 - Signature: `stop() void`
-- Deactivates the session; if a transport is attached, delegates to `transport.stop()`.
-- `status` transitions to `stopped` unconditionally.
-- With no transport attached, always succeeds.
-- Idempotent: calling stop on an already-stopped session is safe.
+- From `active`: deactivates session; delegates to `transport.stop()`.
+- From `idle` or `stopped`: transport is not called; `status` transitions to `stopped`.
+- `status` always transitions to `stopped` on return.
+- Idempotent when already `stopped`.
 
 ### deinit
 
