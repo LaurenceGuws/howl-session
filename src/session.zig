@@ -1271,6 +1271,25 @@ test "ops: queue feed accepted/rejected and apply drain accounting" {
     try std.testing.expectEqual(@as(u64, 9), s.ops.bytes_fed);
 }
 
+test "ops: feed OutOfMemory does not increment feed_rejected" {
+    var buffer: [4]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&buffer);
+    var s = try Session.init(.{
+        .allocator = fba.allocator(),
+        .cols = 80,
+        .rows = 24,
+        .pending_capacity = 64,
+    });
+    defer s.deinit();
+
+    const r = s.feed("0123456789");
+    try std.testing.expectError(error.OutOfMemory, r);
+    try std.testing.expectEqual(@as(u32, 0), s.ops.feed_accepted);
+    try std.testing.expectEqual(@as(u32, 0), s.ops.feed_rejected);
+    try std.testing.expectEqual(@as(u64, 0), s.ops.bytes_fed);
+    try std.testing.expectEqual(@as(usize, 0), s.pending.items.len);
+}
+
 test "ops: reset_calls accounting" {
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
