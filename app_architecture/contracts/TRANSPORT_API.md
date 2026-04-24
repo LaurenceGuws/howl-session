@@ -6,6 +6,10 @@ This contract defines the host-neutral transport seam consumed by `howl-session`
 It does not define platform specifics (PTY, pipes, sockets, or OS APIs).
 It does not define terminal semantics or rendering concerns.
 
+M2 progress split:
+- M2-A/B delivered seam contracts and deterministic in-memory/test adapters.
+- M2-C closes Unix PTY/process adapter execution under the same seam.
+
 ## Ownership Boundaries
 
 - `howl-session` consumes the transport seam; it does not own transport implementations.

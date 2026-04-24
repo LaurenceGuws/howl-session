@@ -9,7 +9,7 @@ It is intentionally non-implementation-detailed.
 | --- | --- | --- |
 | `M0` | Repo Scaffold | Package compiles, tests run, authority/docs baseline exists. |
 | `M1` | Session API Foundation | Stable public session API with explicit lifecycle contracts. |
-| `M2` | Transport Foundation | PTY/process transport layer is deterministic and bounded. |
+| `M2` | Transport Foundation | Transport seam plus Unix PTY/process adapter path is deterministic and bounded. |
 | `M3` | Lifecycle Safety | Startup/shutdown/restart/error boundaries are explicit and tested. |
 | `M4` | Resize and Control Flow | Resize/control paths are deterministic and contract-backed. |
 | `M5` | Host Integration Readiness | Host-facing API is stable for multiple host adapters. |
@@ -21,4 +21,4 @@ It is intentionally non-implementation-detailed.
 
 ## Current Target
 
-Current milestone target is `M0` Repo Scaffold authority closure.
+Current milestone target is `M2` Transport Foundation catch-up closure.
