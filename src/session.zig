@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const types = @import("types.zig");
 const transport_mod = @import("transport.zig");
 
@@ -347,6 +348,27 @@ test "start with MemTransport delegates to transport" {
     try s.start();
     try std.testing.expect(mt.started);
     try std.testing.expectEqual(SessionStatus.active, s.status);
+}
+
+test "start/stop with UnixPtyTransport delegates lifecycle through session" {
+    if (builtin.os.tag != .linux and builtin.os.tag != .macos) return error.SkipZigTest;
+
+    var pty = try transport_mod.UnixPtyTransport.init(std.testing.allocator, "/bin/bash", "while true; do sleep 1; done");
+    defer pty.deinit();
+
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80,
+        .rows = 24,
+        .pending_capacity = 4096,
+        .transport = pty.transport(),
+    });
+    defer s.deinit();
+
+    try s.start();
+    try std.testing.expectEqual(SessionStatus.active, s.status);
+    s.stop();
+    try std.testing.expectEqual(SessionStatus.stopped, s.status);
 }
 
 test "stop with MemTransport delegates to transport" {

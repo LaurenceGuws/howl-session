@@ -9,6 +9,7 @@ pub const transport = @import("transport.zig");
 pub const Transport = transport.Transport;
 pub const MemTransport = transport.MemTransport;
 pub const FailTransport = transport.FailTransport;
+pub const UnixPtyTransport = transport.UnixPtyTransport;
 
 test "host API: all symbols exported" {
     _ = Session;
@@ -18,6 +19,7 @@ test "host API: all symbols exported" {
     _ = Transport;
     _ = MemTransport;
     _ = FailTransport;
+    _ = UnixPtyTransport;
 }
 
 test "host API: SessionConfig required fields present" {

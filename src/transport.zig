@@ -269,7 +269,7 @@ pub const UnixPtyTransport = struct {
         if (!self.started) return;
 
         if (self.child_pid) |pid| {
-            sendGroupSignal(pid, c.SIGTERM);
+            sendSignal(pid, @intCast(posix.SIG.TERM));
             reapChild(pid, 30);
         }
         if (self.master_fd) |fd| posix.close(fd);
@@ -338,10 +338,10 @@ pub const UnixPtyTransport = struct {
         const self: *UnixPtyTransport = @ptrCast(@alignCast(ptr));
         if (!self.started) return;
         if (self.child_pid) |pid| switch (signal) {
-            .hangup => sendGroupSignal(pid, c.SIGHUP),
-            .interrupt => sendGroupSignal(pid, c.SIGINT),
-            .terminate => sendGroupSignal(pid, c.SIGTERM),
-            .resize_notify => sendGroupSignal(pid, c.SIGWINCH),
+            .hangup => sendSignal(pid, @intCast(posix.SIG.HUP)),
+            .interrupt => sendSignal(pid, @intCast(posix.SIG.INT)),
+            .terminate => sendSignal(pid, @intCast(posix.SIG.TERM)),
+            .resize_notify => sendSignal(pid, @intCast(posix.SIG.WINCH)),
         };
     }
 };
@@ -373,13 +373,8 @@ fn childProcess(slave_fd: posix.fd_t, shell_path: [:0]const u8, command: ?[:0]co
     posix.exit(127);
 }
 
-fn sendGroupSignal(pid: posix.pid_t, sig: c_int) void {
-    const pgrp = c.getpgid(pid);
-    if (pgrp > 0) {
-        const group_pid: posix.pid_t = -@as(posix.pid_t, @intCast(pgrp));
-        posix.kill(group_pid, @enumFromInt(sig)) catch {};
-    }
-    posix.kill(pid, @enumFromInt(sig)) catch {};
+fn sendSignal(pid: posix.pid_t, sig: u8) void {
+    posix.kill(pid, sig) catch {};
 }
 
 fn reapChild(pid: posix.pid_t, timeout_ms: i64) void {
@@ -388,7 +383,7 @@ fn reapChild(pid: posix.pid_t, timeout_ms: i64) void {
         const res = posix.waitpid(pid, posix.W.NOHANG);
         if (res.pid != 0) return;
         if (std.time.milliTimestamp() - start_ms > timeout_ms) {
-            sendGroupSignal(pid, c.SIGKILL);
+            sendSignal(pid, @intCast(posix.SIG.KILL));
             _ = posix.waitpid(pid, 0);
             return;
         }
