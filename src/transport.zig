@@ -527,3 +527,53 @@ test "session holds transport reference" {
     defer s.deinit();
     try std.testing.expect(s.transport != null);
 }
+
+fn readUntilContains(t: Transport, allocator: std.mem.Allocator, needle: []const u8, timeout_ms: u64) !bool {
+    var out = std.ArrayList(u8).empty;
+    defer out.deinit(allocator);
+    var buf: [512]u8 = undefined;
+
+    const start_ms: u64 = @intCast(std.time.milliTimestamp());
+    while (true) {
+        const n = try t.read(&buf);
+        if (n > 0) try out.appendSlice(allocator, buf[0..n]);
+        if (std.mem.indexOf(u8, out.items, needle) != null) return true;
+
+        const now_ms: u64 = @intCast(std.time.milliTimestamp());
+        if (now_ms - start_ms > timeout_ms) return false;
+        std.Thread.sleep(5 * std.time.ns_per_ms);
+    }
+}
+
+test "unix pty transport: headless bash command stdout is readable" {
+    if (builtin.os.tag != .linux and builtin.os.tag != .macos) return error.SkipZigTest;
+
+    var pty = try UnixPtyTransport.init(std.testing.allocator, "/bin/bash", "printf 'M2_PTY_STDOUT_OK\\n'; exit\n");
+    defer pty.deinit();
+    var t = pty.transport();
+
+    try t.start();
+    const found = try readUntilContains(t, std.testing.allocator, "M2_PTY_STDOUT_OK", 3000);
+    try std.testing.expect(found);
+    t.stop();
+    try std.testing.expect(!pty.started);
+}
+
+test "unix pty transport: resize and stop are deterministic" {
+    if (builtin.os.tag != .linux and builtin.os.tag != .macos) return error.SkipZigTest;
+
+    var pty = try UnixPtyTransport.init(std.testing.allocator, "/bin/bash", "while true; do sleep 1; done");
+    defer pty.deinit();
+    var t = pty.transport();
+
+    try t.start();
+    try t.resize(132, 50);
+    try std.testing.expectEqual(@as(u16, 132), pty.last_cols);
+    try std.testing.expectEqual(@as(u16, 50), pty.last_rows);
+
+    t.control(.terminate);
+    t.stop();
+    try std.testing.expect(!pty.started);
+    try std.testing.expect(pty.master_fd == null);
+    try std.testing.expect(pty.child_pid == null);
+}
