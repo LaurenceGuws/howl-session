@@ -110,9 +110,17 @@
 | M9-A2: SessionOps counters and test-only OpsCheckpoint helper | done | e9b060d |
 | M9-A3: Operational evidence tests + queue closeout | done | 63da0c4 |
 
+## M10-A Batch — DONE
+
+| Ticket | Status | Commit |
+| --- | --- | --- |
+| M10-A1: Session snapshot/restore contract authority | done | ba38df1 |
+| M10-A2: SessionSnapshot type, snapshot/restore methods, test-only helper | done | af6eba4 |
+| M10-A3: Snapshot/restore evidence tests + queue closeout | done | TBD |
+
 ## Outstanding
 
 Awaiting architect publication of next batch.
 
 Candidate next scope (not started, not decided):
-- M10: Snapshot / Restore — session state export and re-import for suspend/resume or migration.
+- M11: Session Drain / Flush — explicit pending-queue drain with byte-level visibility, or synchronous flush semantics for transport-coupled apply.
