@@ -116,7 +116,7 @@
 | --- | --- | --- |
 | M10-A1: Session snapshot/restore contract authority | done | ba38df1 |
 | M10-A2: SessionSnapshot type, snapshot/restore methods, test-only helper | done | af6eba4 |
-| M10-A3: Snapshot/restore evidence tests + queue closeout | done | TBD |
+| M10-A3: Snapshot/restore evidence tests + queue closeout | done | e9977ef |
 
 ## Outstanding
 
