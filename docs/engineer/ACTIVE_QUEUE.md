@@ -94,9 +94,17 @@
 | M7-A2: Test-only performance harness | done | 522dd4e |
 | M7-A3: Baseline evidence tests + queue closeout | done | 93ef7f4 |
 
+## M8-A Batch — DONE
+
+| Ticket | Status | Commit |
+| --- | --- | --- |
+| M8-A1: Session reliability contract authority | done | cae661c |
+| M8-A2: Test-only reliability harness | done | 3bb33e8 |
+| M8-A3: Reliability evidence tests + queue closeout | done | TBD |
+
 ## Outstanding
 
 Awaiting architect publication of next batch.
 
 Candidate next scope (not started, not decided):
-- M8: Reliability Hardening — long-run stability and failure recovery production-grade.
+- M9: Operational Surface — observability hooks, metrics emission, or structured event logging for production runtime visibility.

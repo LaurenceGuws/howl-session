@@ -1009,3 +1009,120 @@ test "perf: feed 64-byte payload steady-state (Class A, warm capacity)" {
     try std.testing.expect(med > 0);
     try std.testing.expect(med < 1_000_000);
 }
+
+// ── Reliability evidence (M8-A) ───────────────────────────────────────────────
+
+test "reliability R-1: start/stop cycle stability" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80,
+        .rows = 24,
+        .pending_capacity = 256,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+
+    for (0..reliability.WARMUP_CYCLES) |_| {
+        try s.start();
+        s.stop();
+    }
+
+    const baseline = conformance.Checkpoint.capture(&s);
+
+    for (0..reliability.CYCLES) |_| {
+        try s.start();
+        s.stop();
+        const cp = conformance.Checkpoint.capture(&s);
+        try conformance.Checkpoint.expectEqual(baseline, cp);
+    }
+}
+
+test "reliability R-2: error-path retry stability" {
+    var ft = transport_mod.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80,
+        .rows = 24,
+        .pending_capacity = 256,
+        .transport = ft.transport(),
+    });
+    defer s.deinit();
+
+    for (0..reliability.WARMUP_CYCLES) |_| {
+        _ = s.start() catch {};
+    }
+
+    const baseline = conformance.Checkpoint.capture(&s);
+
+    for (0..reliability.CYCLES) |_| {
+        _ = s.start() catch {};
+        const cp = conformance.Checkpoint.capture(&s);
+        try conformance.Checkpoint.expectEqual(baseline, cp);
+    }
+}
+
+test "reliability R-3: queue pressure at capacity" {
+    const capacity: usize = 64;
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80,
+        .rows = 24,
+        .pending_capacity = capacity,
+    });
+    defer s.deinit();
+
+    const payload = [_]u8{'x'} ** 64;
+
+    for (0..reliability.WARMUP_CYCLES) |_| {
+        try s.feed(&payload);
+        _ = s.apply();
+    }
+
+    const baseline = conformance.Checkpoint.capture(&s);
+    try std.testing.expectEqual(@as(usize, 0), baseline.pending_len);
+
+    for (0..reliability.CYCLES) |_| {
+        try s.feed(&payload);
+        _ = s.apply();
+        const cp = conformance.Checkpoint.capture(&s);
+        try std.testing.expectEqual(@as(usize, 0), cp.pending_len);
+        try std.testing.expectEqual(baseline.resize_count, cp.resize_count);
+        try std.testing.expectEqual(baseline.last_control_signal, cp.last_control_signal);
+        try std.testing.expectEqual(baseline.status, cp.status);
+        try std.testing.expectEqual(baseline.cols, cp.cols);
+        try std.testing.expectEqual(baseline.rows, cp.rows);
+    }
+
+    try std.testing.expectEqual(capacity, s.pending_capacity);
+}
+
+test "reliability R-4: resize/control churn stability" {
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80,
+        .rows = 24,
+        .pending_capacity = 256,
+    });
+    defer s.deinit();
+
+    for (0..reliability.WARMUP_CYCLES) |_| {
+        try s.resize(100, 40);
+        s.control(.interrupt);
+    }
+
+    const initial_resize_count = s.resize_count;
+
+    for (0..reliability.CYCLES) |i| {
+        try s.resize(100, 40);
+        s.control(.interrupt);
+        try std.testing.expectEqual(
+            reliability.expectedResizeCount(initial_resize_count, @as(u32, @intCast(i + 1))),
+            s.resize_count,
+        );
+        try std.testing.expectEqual(ControlSignal.interrupt, s.last_control_signal.?);
+        try std.testing.expectEqual(@as(usize, 0), s.pending.items.len);
+    }
+}
