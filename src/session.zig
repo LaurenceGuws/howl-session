@@ -671,3 +671,224 @@ test "resize and control do not affect queue semantics" {
     try std.testing.expectEqual(@as(u32, 1), s.resize_count);
     try std.testing.expectEqual(ControlSignal.hangup, s.last_control_signal.?);
 }
+
+// FC-1: Lifecycle transitions
+test "conformance FC-1: lifecycle transition checkpoint sequence" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    try s.start();
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .active, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    try std.testing.expectError(error.AlreadyStarted, s.start());
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .active, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    s.stop();
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .stopped, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    try s.start();
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .active, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+}
+
+// FC-2: Queue capacity and overflow
+test "conformance FC-2: queue capacity checkpoint sequence" {
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 8,
+    });
+    defer s.deinit();
+
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    try s.feed("abc");
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 3 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    try s.feed("de");
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 5 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    try std.testing.expectError(error.QueueFull, s.feed("overflow!"));
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 5 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    try s.feed("fgh");
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 8 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    _ = s.apply();
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    try s.feed("xyz");
+    s.reset();
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+}
+
+// FC-3: Resize and control sequencing
+test "conformance FC-3: resize and control sequencing checkpoint sequence" {
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+    });
+    defer s.deinit();
+
+    try s.resize(100, 40);
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 100, .rows = 40, .resize_count = 1, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    try s.resize(100, 40);
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 100, .rows = 40, .resize_count = 2, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    try std.testing.expectError(error.InvalidDimensions, s.resize(0, 40));
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 100, .rows = 40, .resize_count = 2, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    s.control(.hangup);
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 100, .rows = 40, .resize_count = 2, .last_control_signal = ControlSignal.hangup, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    s.control(.terminate);
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 100, .rows = 40, .resize_count = 2, .last_control_signal = ControlSignal.terminate, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+}
+
+// FC-4: Failure-boundary behavior
+test "conformance FC-4: failure-boundary checkpoint sequence" {
+    var ft = transport_mod.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = ft.transport(),
+    });
+    defer s.deinit();
+
+    try std.testing.expectError(error.TransportFailed, s.start());
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    try std.testing.expectError(error.TransportFailed, s.start());
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    try std.testing.expectError(error.TransportFailed, s.resize(132, 50));
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 132, .rows = 50, .resize_count = 1, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+
+    try std.testing.expectError(error.TransportFailed, s.resize(100, 40));
+    try conformance.Checkpoint.expectEqual(
+        .{ .status = .idle, .cols = 100, .rows = 40, .resize_count = 2, .last_control_signal = null, .pending_len = 0 },
+        conformance.Checkpoint.capture(&s),
+    );
+}
+
+// FC-5: Null vs attached transport equivalence
+test "conformance FC-5: null vs attached transport session-state equivalence" {
+    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+
+    var s_null = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+    });
+    defer s_null.deinit();
+
+    var s_attached = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 4096,
+        .transport = mt.transport(),
+    });
+    defer s_attached.deinit();
+
+    try s_null.start();
+    try s_attached.start();
+    try conformance.Checkpoint.expectEqual(
+        conformance.Checkpoint.capture(&s_null),
+        conformance.Checkpoint.capture(&s_attached),
+    );
+
+    try s_null.resize(132, 50);
+    try s_attached.resize(132, 50);
+    try conformance.Checkpoint.expectEqual(
+        conformance.Checkpoint.capture(&s_null),
+        conformance.Checkpoint.capture(&s_attached),
+    );
+
+    s_null.control(.interrupt);
+    s_attached.control(.interrupt);
+    try conformance.Checkpoint.expectEqual(
+        conformance.Checkpoint.capture(&s_null),
+        conformance.Checkpoint.capture(&s_attached),
+    );
+
+    try s_null.feed("hello");
+    try s_attached.feed("hello");
+    try conformance.Checkpoint.expectEqual(
+        conformance.Checkpoint.capture(&s_null),
+        conformance.Checkpoint.capture(&s_attached),
+    );
+
+    s_null.stop();
+    s_attached.stop();
+    try conformance.Checkpoint.expectEqual(
+        conformance.Checkpoint.capture(&s_null),
+        conformance.Checkpoint.capture(&s_attached),
+    );
+}

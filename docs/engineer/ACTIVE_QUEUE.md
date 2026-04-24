@@ -69,30 +69,25 @@
 | M4-A2: Add resize_count and last_control_signal observability fields | done | 0ac0824 |
 | M4-A3: Resize/control observability integration tests + queue closeout | done | 22ec4e6 |
 
-## M5-A Batch — DONE
+## M5-A Batch — DONE (accepted, no review fix)
 
 | Ticket | Status | Commit |
 | --- | --- | --- |
 | M5-A1: Host-facing API freeze contract | done | ef4e4e4 |
 | M5-A2: Root API conformance checks | done | b2dca6e |
-| M5-A3: Readiness matrix + queue closeout | done | (this commit) |
+| M5-A3: Readiness matrix + queue closeout | done | 143c317 |
 
-## Host Integration Readiness Matrix
+## M6-A Batch — DONE
 
-| Capability | Contract | Tests | Status |
-| --- | --- | --- | --- |
-| Session lifecycle (init/start/stop/deinit) | SESSION_API.md state machine | 20 tests | ready |
-| Pending queue (feed/apply/reset, capacity) | SESSION_API.md feed/apply/reset | 17 tests | ready |
-| Resize sequencing (dims → counter → transport) | SESSION_API.md resize | 8 tests | ready |
-| Control signal routing (session record → transport) | SESSION_API.md control | 5 tests | ready |
-| Transport seam (start/stop/write/read/resize/control) | TRANSPORT_API.md | 14 tests | ready |
-| Error boundaries (start/resize failure post-conditions) | SESSION_API.md error boundaries | 7 tests | ready |
-| Observability (resize_count, last_control_signal, status) | SESSION_API.md observability | 6 tests | ready |
-| API surface conformance | HOST_SESSION_API.md | 7 conformance tests | ready |
+| Ticket | Status | Commit |
+| --- | --- | --- |
+| M6-A1: Conformance protocol contract | done | a794a95 |
+| M6-A2: Conformance checkpoint helper (test-only) | done | 676bdf0 |
+| M6-A3: Fixture-class evidence tests + queue closeout | done | (this commit) |
 
 ## Outstanding
 
 Awaiting architect publication of next batch.
 
 Candidate next scope (not started, not decided):
-- M6: Conformance Evidence — session behavior equivalence checks reproducible and frozen.
+- M7: Performance Discipline — session loop latency and resource bounds measured and enforced.
