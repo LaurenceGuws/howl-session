@@ -102,9 +102,17 @@
 | M8-A2: Test-only reliability harness | done | 3bb33e8 |
 | M8-A3: Reliability evidence tests + queue closeout | done | 6f95b4f |
 
+## M9-A Batch — DONE
+
+| Ticket | Status | Commit |
+| --- | --- | --- |
+| M9-A1: Session operational surface contract authority | done | a0e393d |
+| M9-A2: SessionOps counters and test-only OpsCheckpoint helper | done | e9b060d |
+| M9-A3: Operational evidence tests + queue closeout | done | TBD |
+
 ## Outstanding
 
 Awaiting architect publication of next batch.
 
 Candidate next scope (not started, not decided):
-- M9: Operational Surface — observability hooks, metrics emission, or structured event logging for production runtime visibility.
+- M10: Snapshot / Restore — session state export and re-import for suspend/resume or migration.
