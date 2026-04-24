@@ -91,6 +91,7 @@ pub const Session = struct {
 
 const conformance = @import("conformance.zig");
 const perf = @import("perf.zig");
+const reliability = @import("reliability.zig");
 
 test "init rejects zero cols" {
     const result = Session.init(.{ .allocator = std.testing.allocator, .cols = 0, .rows = 24, .pending_capacity = 4096 });
