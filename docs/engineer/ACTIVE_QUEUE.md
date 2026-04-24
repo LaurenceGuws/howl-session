@@ -77,17 +77,26 @@
 | M5-A2: Root API conformance checks | done | b2dca6e |
 | M5-A3: Readiness matrix + queue closeout | done | 143c317 |
 
-## M6-A Batch — DONE
+## M6-A Batch — DONE (accepted after review fix)
 
 | Ticket | Status | Commit |
 | --- | --- | --- |
 | M6-A1: Conformance protocol contract | done | a794a95 |
 | M6-A2: Conformance checkpoint helper (test-only) | done | 676bdf0 |
 | M6-A3: Fixture-class evidence tests + queue closeout | done | d4035df |
+| M6-A review fix | done | 9666e2a |
+
+## M7-A Batch — DONE
+
+| Ticket | Status | Commit |
+| --- | --- | --- |
+| M7-A1: Session performance contract authority | done | cec30a3 |
+| M7-A2: Test-only performance harness | done | 522dd4e |
+| M7-A3: Baseline evidence tests + queue closeout | done | (this commit) |
 
 ## Outstanding
 
 Awaiting architect publication of next batch.
 
 Candidate next scope (not started, not decided):
-- M7: Performance Discipline — session loop latency and resource bounds measured and enforced.
+- M8: Reliability Hardening — long-run stability and failure recovery production-grade.

@@ -893,3 +893,118 @@ test "conformance FC-5: null vs attached transport session-state equivalence" {
         conformance.Checkpoint.capture(&s_attached),
     );
 }
+
+// Performance evidence: Class B steady-state operations
+test "perf: apply steady-state (Class B)" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    for (0..perf.WARMUP_ITERS) |_| {
+        try s.feed("warmup-bytes");
+        _ = s.apply();
+    }
+    var sampler = perf.PerfSampler(perf.MEASURE_ITERS).init();
+    var timer = try perf.PerfTimer.start();
+    for (0..perf.MEASURE_ITERS) |_| {
+        try s.feed("measure-bytes");
+        timer.timer.reset();
+        _ = s.apply();
+        sampler.record(timer.lapNs());
+    }
+    const med = sampler.median();
+    try std.testing.expect(med > 0);
+    try std.testing.expect(med < 1_000_000);
+}
+
+test "perf: reset steady-state (Class B)" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    for (0..perf.WARMUP_ITERS) |_| {
+        try s.feed("warmup");
+        s.reset();
+    }
+    var sampler = perf.PerfSampler(perf.MEASURE_ITERS).init();
+    var timer = try perf.PerfTimer.start();
+    for (0..perf.MEASURE_ITERS) |_| {
+        try s.feed("measure");
+        timer.timer.reset();
+        s.reset();
+        sampler.record(timer.lapNs());
+    }
+    const med = sampler.median();
+    try std.testing.expect(med > 0);
+    try std.testing.expect(med < 1_000_000);
+}
+
+test "perf: resize steady-state (Class B)" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    for (0..perf.WARMUP_ITERS) |_| try s.resize(80, 24);
+    var sampler = perf.PerfSampler(perf.MEASURE_ITERS).init();
+    var timer = try perf.PerfTimer.start();
+    for (0..perf.MEASURE_ITERS) |_| {
+        timer.timer.reset();
+        try s.resize(80, 24);
+        sampler.record(timer.lapNs());
+    }
+    const med = sampler.median();
+    try std.testing.expect(med > 0);
+    try std.testing.expect(med < 1_000_000);
+}
+
+test "perf: control steady-state (Class B)" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    for (0..perf.WARMUP_ITERS) |_| s.control(.hangup);
+    var sampler = perf.PerfSampler(perf.MEASURE_ITERS).init();
+    var timer = try perf.PerfTimer.start();
+    for (0..perf.MEASURE_ITERS) |_| {
+        timer.timer.reset();
+        s.control(.hangup);
+        sampler.record(timer.lapNs());
+    }
+    const med = sampler.median();
+    try std.testing.expect(med > 0);
+    try std.testing.expect(med < 1_000_000);
+}
+
+test "perf: start/stop cycle steady-state (Class B, null transport)" {
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    for (0..perf.WARMUP_ITERS) |_| {
+        try s.start();
+        s.stop();
+    }
+    var sampler = perf.PerfSampler(perf.MEASURE_ITERS).init();
+    var timer = try perf.PerfTimer.start();
+    for (0..perf.MEASURE_ITERS) |_| {
+        timer.timer.reset();
+        try s.start();
+        s.stop();
+        sampler.record(timer.lapNs());
+    }
+    const med = sampler.median();
+    try std.testing.expect(med > 0);
+    try std.testing.expect(med < 1_000_000);
+}
+
+// Performance evidence: Class A feed with stable 64-byte payload
+test "perf: feed 64-byte payload steady-state (Class A, warm capacity)" {
+    const payload = "x" ** 64;
+    var s = try Session.init(.{ .allocator = std.testing.allocator, .cols = 80, .rows = 24, .pending_capacity = 4096 });
+    defer s.deinit();
+    for (0..perf.WARMUP_ITERS) |_| {
+        try s.feed(payload);
+        _ = s.apply();
+    }
+    var sampler = perf.PerfSampler(perf.MEASURE_ITERS).init();
+    var timer = try perf.PerfTimer.start();
+    for (0..perf.MEASURE_ITERS) |_| {
+        timer.timer.reset();
+        try s.feed(payload);
+        sampler.record(timer.lapNs());
+        _ = s.apply();
+    }
+    const med = sampler.median();
+    try std.testing.expect(med > 0);
+    try std.testing.expect(med < 1_000_000);
+}
