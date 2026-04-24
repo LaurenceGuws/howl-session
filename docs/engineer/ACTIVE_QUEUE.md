@@ -100,7 +100,7 @@
 | --- | --- | --- |
 | M8-A1: Session reliability contract authority | done | cae661c |
 | M8-A2: Test-only reliability harness | done | 3bb33e8 |
-| M8-A3: Reliability evidence tests + queue closeout | done | TBD |
+| M8-A3: Reliability evidence tests + queue closeout | done | 6f95b4f |
 
 ## Outstanding
 
