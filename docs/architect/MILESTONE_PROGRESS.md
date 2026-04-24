@@ -2,5 +2,14 @@
 
 | Milestone | Status | Scope Anchor | Notes |
 | --- | --- | --- | --- |
-| `M0` Repo Scaffold | `active` | `app_architecture/authorities/MILESTONE.md` | Authority/workflow baseline closure in progress. |
-| `M1-M10` | `pending` | `app_architecture/authorities/MILESTONE.md` | Not started. |
+| `M0` Repo Scaffold | `done` | `app_architecture/authorities/MILESTONE.md` | Package scaffold, docs baseline, and local validation flow established. |
+| `M1` Session API Foundation | `done` | `app_architecture/authorities/MILESTONE.md` | Session API contracts and baseline lifecycle/queue semantics established. |
+| `M2` Transport Foundation | `active` | `app_architecture/authorities/MILESTONE.md` | Seam and test adapters are complete; PTY/process transport completion is the active catch-up focus. |
+| `M3` Lifecycle Safety | `paused` | `app_architecture/authorities/MILESTONE.md` | Frozen pending M2 catch-up closure. |
+| `M4` Resize and Control Flow | `paused` | `app_architecture/authorities/MILESTONE.md` | Frozen pending M2 catch-up closure. |
+| `M5` Host Integration Readiness | `paused` | `app_architecture/authorities/MILESTONE.md` | Frozen pending M2 catch-up closure. |
+| `M6` Conformance Evidence | `paused` | `app_architecture/authorities/MILESTONE.md` | Frozen pending M2 catch-up closure. |
+| `M7` Performance Discipline | `paused` | `app_architecture/authorities/MILESTONE.md` | Frozen pending M2 catch-up closure. |
+| `M8` Reliability Hardening | `paused` | `app_architecture/authorities/MILESTONE.md` | Frozen pending M2 catch-up closure. |
+| `M9` Operational Surface | `paused` | `app_architecture/authorities/MILESTONE.md` | Frozen pending M2 catch-up closure. |
+| `M10` Session Runtime Quality | `paused` | `app_architecture/authorities/MILESTONE.md` | Frozen pending M2 catch-up closure. |
