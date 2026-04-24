@@ -83,7 +83,7 @@
 | --- | --- | --- |
 | M6-A1: Conformance protocol contract | done | a794a95 |
 | M6-A2: Conformance checkpoint helper (test-only) | done | 676bdf0 |
-| M6-A3: Fixture-class evidence tests + queue closeout | done | (this commit) |
+| M6-A3: Fixture-class evidence tests + queue closeout | done | d4035df |
 
 ## Outstanding
 
