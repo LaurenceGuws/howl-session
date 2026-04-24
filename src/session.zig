@@ -1034,6 +1034,7 @@ test "reliability R-1: start/stop cycle stability" {
     for (0..reliability.CYCLES) |_| {
         try s.start();
         s.stop();
+        try std.testing.expect(!mt.started);
         const cp = conformance.Checkpoint.capture(&s);
         try conformance.Checkpoint.expectEqual(baseline, cp);
     }
@@ -1052,13 +1053,13 @@ test "reliability R-2: error-path retry stability" {
     defer s.deinit();
 
     for (0..reliability.WARMUP_CYCLES) |_| {
-        _ = s.start() catch {};
+        try std.testing.expectError(error.TransportFailed, s.start());
     }
 
     const baseline = conformance.Checkpoint.capture(&s);
 
     for (0..reliability.CYCLES) |_| {
-        _ = s.start() catch {};
+        try std.testing.expectError(error.TransportFailed, s.start());
         const cp = conformance.Checkpoint.capture(&s);
         try conformance.Checkpoint.expectEqual(baseline, cp);
     }
@@ -1118,6 +1119,9 @@ test "reliability R-4: resize/control churn stability" {
     for (0..reliability.CYCLES) |i| {
         try s.resize(100, 40);
         s.control(.interrupt);
+        try std.testing.expectEqual(SessionStatus.idle, s.status);
+        try std.testing.expectEqual(@as(u16, 100), s.cols);
+        try std.testing.expectEqual(@as(u16, 40), s.rows);
         try std.testing.expectEqual(
             reliability.expectedResizeCount(initial_resize_count, @as(u32, @intCast(i + 1))),
             s.resize_count,
