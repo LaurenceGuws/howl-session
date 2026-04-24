@@ -17,12 +17,12 @@ Queue is locked to `M2-*` execution only until PTY/process transport closure.
 ## Active Batch (M2-C)
 
 | Ticket | Status | Commit | Intent |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | `M2-C1` | done | `0869a54` | Align M2 contract wording with actual seam-vs-PTY state. |
 | `M2-C2` | done | `13b3cb4` | Implement Unix PTY/process transport adapter. |
 | `M2-C3` | done | `1a01c2e` | Wire session lifecycle path required for PTY transport usage. |
 | `M2-C4` | done | `a7e862a` | Add deterministic headless bash evidence tests (spawn/read/resize/stop). |
-| `M2-C5` | done | `pending` | Publish M2 closeout evidence and queue update. |
+| `M2-C5` | done | `b79cdd6` | Publish M2 closeout evidence and queue update. |
 
 ## Guardrail
 
