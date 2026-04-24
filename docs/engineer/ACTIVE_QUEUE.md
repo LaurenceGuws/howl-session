@@ -92,7 +92,7 @@
 | --- | --- | --- |
 | M7-A1: Session performance contract authority | done | cec30a3 |
 | M7-A2: Test-only performance harness | done | 522dd4e |
-| M7-A3: Baseline evidence tests + queue closeout | done | (this commit) |
+| M7-A3: Baseline evidence tests + queue closeout | done | 93ef7f4 |
 
 ## Outstanding
 

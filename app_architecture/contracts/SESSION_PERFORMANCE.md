@@ -65,8 +65,8 @@ Gates are expressed as:
 <operation> median_ns <= baseline * <factor>  // baseline-relative gate
 ```
 
-M7 evidence tests capture baselines but do not enforce absolute gates.
-Absolute gates are frozen in a future milestone when reference hardware is designated.
+M7 evidence tests enforce provisional absolute safety gates.
+Frozen absolute gates are designated in a future milestone when reference hardware is selected.
 
 The current M7 gate is:
 - All Class B operations: `median_ns > 0` (measurement infrastructure works)
@@ -77,7 +77,8 @@ The current M7 gate is:
 
 - Class A operations: allocation is permitted; OOM must be surfaced as an error, not a panic.
 - Class B operations: must not allocate in steady-state (warm queue, no capacity growth).
-  - Verified by: running Class B ops in a tight loop with a `std.testing.allocator`; any unexpected allocation would trigger a GPA leak report at test end.
+  - M7 evidence exercises Class B operations in steady-state loops.
+  - M7 does not include explicit allocation-count assertions; this remains a contract requirement and is a target for stricter allocation instrumentation in a future milestone.
 - No session operation may call `free` on data that is still reachable from the Session struct.
 
 ## Non-Goals
