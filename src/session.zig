@@ -1638,14 +1638,14 @@ test "snapshot/restore: ops counters unaffected by restore" {
     const sn = s.snapshot();
 
     try s.resize(100, 40);
+    const ops_pre_restore = ops_mod.OpsCheckpoint.capture(&s);
     try s.restore(sn);
 
     const ops_after = ops_mod.OpsCheckpoint.capture(&s);
 
-    // ops counters advanced by the resize and restore calls, not reset
-    try std.testing.expect(ops_after.resize_valid_calls >= ops_before.resize_valid_calls);
-    // feed/apply/control counters from before restore are preserved
-    try std.testing.expectEqual(ops_before.feed_accepted, ops_after.feed_accepted - 0);
-    try std.testing.expectEqual(ops_before.apply_calls, ops_after.apply_calls);
-    try std.testing.expectEqual(ops_before.control_calls, ops_after.control_calls);
+    // resize advances counters as expected before restore.
+    try std.testing.expectEqual(ops_before.resize_valid_calls + 1, ops_pre_restore.resize_valid_calls);
+
+    // restore itself must not mutate any operational counter.
+    try ops_mod.OpsCheckpoint.expectEqual(ops_pre_restore, ops_after);
 }
