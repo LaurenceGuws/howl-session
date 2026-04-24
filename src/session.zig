@@ -14,6 +14,14 @@ pub const Config = struct {
     transport: ?Transport = null,
 };
 
+pub const SessionSnapshot = struct {
+    cols: u16,
+    rows: u16,
+    status: SessionStatus,
+    resize_count: u32,
+    last_control_signal: ?ControlSignal,
+};
+
 pub const SessionOps = struct {
     start_attempts: u32,
     start_successes: u32,
@@ -131,12 +139,33 @@ pub const Session = struct {
         self.last_control_signal = signal;
         if (self.transport) |t| t.control(signal);
     }
+
+    pub fn snapshot(self: *const Session) SessionSnapshot {
+        return .{
+            .cols = self.cols,
+            .rows = self.rows,
+            .status = self.status,
+            .resize_count = self.resize_count,
+            .last_control_signal = self.last_control_signal,
+        };
+    }
+
+    pub fn restore(self: *Session, snap: SessionSnapshot) error{InvalidSnapshot}!void {
+        if (snap.cols == 0 or snap.rows == 0) return error.InvalidSnapshot;
+        self.cols = snap.cols;
+        self.rows = snap.rows;
+        self.status = if (snap.status == .active) .stopped else snap.status;
+        self.resize_count = snap.resize_count;
+        self.last_control_signal = snap.last_control_signal;
+        self.pending.clearRetainingCapacity();
+    }
 };
 
 const conformance = @import("conformance.zig");
 const perf = @import("perf.zig");
 const reliability = @import("reliability.zig");
 const ops_mod = @import("ops.zig");
+const snapshot_mod = @import("snapshot.zig");
 
 test "init rejects zero cols" {
     const result = Session.init(.{ .allocator = std.testing.allocator, .cols = 0, .rows = 24, .pending_capacity = 4096 });
