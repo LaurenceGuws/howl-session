@@ -108,7 +108,7 @@
 | --- | --- | --- |
 | M9-A1: Session operational surface contract authority | done | a0e393d |
 | M9-A2: SessionOps counters and test-only OpsCheckpoint helper | done | e9b060d |
-| M9-A3: Operational evidence tests + queue closeout | done | TBD |
+| M9-A3: Operational evidence tests + queue closeout | done | 63da0c4 |
 
 ## Outstanding
 
