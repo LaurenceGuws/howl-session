@@ -14,6 +14,23 @@ pub const Config = struct {
     transport: ?Transport = null,
 };
 
+pub const SessionOps = struct {
+    start_attempts: u32,
+    start_successes: u32,
+    start_failures: u32,
+    stop_calls: u32,
+    feed_accepted: u32,
+    feed_rejected: u32,
+    bytes_fed: u64,
+    bytes_applied: u64,
+    apply_calls: u32,
+    reset_calls: u32,
+    resize_valid_calls: u32,
+    resize_invalid_calls: u32,
+    resize_transport_errors: u32,
+    control_calls: u32,
+};
+
 pub const Session = struct {
     allocator: std.mem.Allocator,
     cols: u16,
@@ -24,6 +41,7 @@ pub const Session = struct {
     transport: ?Transport,
     resize_count: u32,
     last_control_signal: ?ControlSignal,
+    ops: SessionOps,
 
     pub fn init(config: Config) error{InvalidConfig}!Session {
         if (config.cols == 0 or config.rows == 0) return error.InvalidConfig;
@@ -38,6 +56,7 @@ pub const Session = struct {
             .transport = config.transport,
             .resize_count = 0,
             .last_control_signal = null,
+            .ops = std.mem.zeroes(SessionOps),
         };
     }
 
@@ -47,12 +66,18 @@ pub const Session = struct {
     }
 
     pub fn start(self: *Session) anyerror!void {
+        self.ops.start_attempts += 1;
         if (self.status == .active) return error.AlreadyStarted;
-        if (self.transport) |t| try t.start();
+        if (self.transport) |t| t.start() catch |err| {
+            self.ops.start_failures += 1;
+            return err;
+        };
         self.status = .active;
+        self.ops.start_successes += 1;
     }
 
     pub fn stop(self: *Session) void {
+        self.ops.stop_calls += 1;
         if (self.status == .active) {
             if (self.transport) |t| t.stop();
         }
@@ -60,30 +85,49 @@ pub const Session = struct {
     }
 
     pub fn feed(self: *Session, bytes: []const u8) error{ OutOfMemory, QueueFull }!void {
-        const projected_len = std.math.add(usize, self.pending.items.len, bytes.len) catch return error.QueueFull;
-        if (projected_len > self.pending_capacity) return error.QueueFull;
+        const projected_len = std.math.add(usize, self.pending.items.len, bytes.len) catch {
+            self.ops.feed_rejected += 1;
+            return error.QueueFull;
+        };
+        if (projected_len > self.pending_capacity) {
+            self.ops.feed_rejected += 1;
+            return error.QueueFull;
+        }
         try self.pending.appendSlice(self.allocator, bytes);
+        self.ops.feed_accepted += 1;
+        self.ops.bytes_fed += bytes.len;
     }
 
     pub fn apply(self: *Session) usize {
+        self.ops.apply_calls += 1;
         const n = self.pending.items.len;
         self.pending.clearRetainingCapacity();
+        self.ops.bytes_applied += n;
         return n;
     }
 
     pub fn reset(self: *Session) void {
+        self.ops.reset_calls += 1;
         self.pending.clearRetainingCapacity();
     }
 
     pub fn resize(self: *Session, cols: u16, rows: u16) anyerror!void {
-        if (cols == 0 or rows == 0) return error.InvalidDimensions;
+        if (cols == 0 or rows == 0) {
+            self.ops.resize_invalid_calls += 1;
+            return error.InvalidDimensions;
+        }
         self.cols = cols;
         self.rows = rows;
         self.resize_count +%= 1;
-        if (self.transport) |t| try t.resize(cols, rows);
+        self.ops.resize_valid_calls += 1;
+        if (self.transport) |t| t.resize(cols, rows) catch |err| {
+            self.ops.resize_transport_errors += 1;
+            return err;
+        };
     }
 
     pub fn control(self: *Session, signal: ControlSignal) void {
+        self.ops.control_calls += 1;
         self.last_control_signal = signal;
         if (self.transport) |t| t.control(signal);
     }
@@ -92,6 +136,7 @@ pub const Session = struct {
 const conformance = @import("conformance.zig");
 const perf = @import("perf.zig");
 const reliability = @import("reliability.zig");
+const ops_mod = @import("ops.zig");
 
 test "init rejects zero cols" {
     const result = Session.init(.{ .allocator = std.testing.allocator, .cols = 0, .rows = 24, .pending_capacity = 4096 });
