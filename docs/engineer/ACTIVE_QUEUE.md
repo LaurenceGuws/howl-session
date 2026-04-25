@@ -12,7 +12,7 @@ Queue is open for `M3+` planning.
 - `app_architecture/authorities/MILESTONE.md`
 - `docs/architect/MILESTONE_PROGRESS.md`
 - `app_architecture/contracts/TRANSPORT_API.md`
-- `app_architecture/contracts/SESSION_API.md`
+- `app_architecture/contracts/API.md`
 
 ## Completed Batch (M2-R)
 
@@ -21,7 +21,7 @@ Queue is open for `M3+` planning.
 | `M2-R1` | done | `0cc48b4` | Transport Topology Split: interface/mem/fail/unix_pty sub-modules under src/transport/. |
 | `M2-R2` | done | `ada5d7f` | Session Topology Split: core/snapshot_restore/ops_counters sub-modules under src/session/. |
 | `M2-R3` | done | `9d0a463` | Root/API Integrity and Wiring: facade wiring conformance tests added to root.zig. |
-| `M2-R4` | done | `(this commit)` | Queue Closeout: hashes recorded, queue opened for M3+. |
+| `M2-R4` | done | `8b16b01` | Queue Closeout: hashes recorded, queue opened for M3+. |
 
 ## Guardrail
 
