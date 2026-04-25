@@ -74,6 +74,35 @@ Error values that transport operations may return:
 - Fire-and-forget: no error channel is provided.
 - Before start/after stop behavior is adapter-defined.
 
+## Unix PTY/Process Adapter Guarantees
+
+The Unix PTY adapter (`UnixPtyTransport`) is the canonical process-based transport implementation.
+
+### Platform Guarantees
+
+- Linux and macOS only; `init()` returns `error.UnsupportedPlatform` on all other targets.
+- Uses system `openpty` and `fork` APIs; no fallback or emulation.
+
+### Lifecycle Guarantees
+
+- `start()` forks a child process, allocates a PTY master fd, sets it non-blocking, and spawns a shell.
+- Multiple `start()` calls without intervening `stop()` return `error.AlreadyStarted` with no state change.
+- `stop()` is idempotent: signals the child with SIGTERM, reaps with timeout, closes fds, and succeeds whether or not process had already exited.
+- Child process lifecycle (SIGHUP, SIGINT, SIGTERM, SIGWINCH) is deterministic and bounded; no orphaned processes after `stop()`.
+
+### I/O Guarantees
+
+- `read()` is non-blocking: returns 0 if no bytes available; never blocks on started transport.
+- `write()` is non-blocking: returns WouldBlock as 0 bytes written; never blocks.
+- Both return `error.NotStarted` if called before `start()` or after `stop()`.
+- Partial writes are valid: callers must loop.
+
+### Resize and Control Guarantees
+
+- `resize()` updates TIOCSWINSZ on the master fd; failure returns `error.ResizeFailed`.
+- `control()` sends signals to child process; before start or after stop is safe (no-op).
+- Both are deterministic and cannot corrupt transport state.
+
 ## Stop Conditions
 
 Engineer must stop and report if any transport boundary requires:
