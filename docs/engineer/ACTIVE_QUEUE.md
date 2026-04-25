@@ -2,7 +2,7 @@
 
 ## Current State
 
-`M4` Resize/Control Flow execution complete. Queue open for `M5+` planning.
+`M5-A` Host Integration Readiness contract closure complete. Queue open for `M5-B` definition.
 
 ## Read Before Execution
 
@@ -47,6 +47,7 @@
 | --- | --- | --- | --- |
 | `M5-A1` | done | `d5c9e49` | Host API Contract Closure |
 | `M5-A2` | done | `9ea48b7` | Root/API Conformance Tests |
+| `M5-A3` | done | `5d21d46` | Queue Closeout + M5 Progress Lock |
 
 ## M5-B Planning (Integration Patterns and Multi-Host Support)
 

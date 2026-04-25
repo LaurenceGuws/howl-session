@@ -250,18 +250,18 @@ Hosts provide and observe the following fields:
 | `cols` | `u16` | yes |
 | `rows` | `u16` | yes |
 | `pending_capacity` | `usize` | yes |
-| `transport` | `?*Transport` | no (optional) |
+| `transport` | `?Transport` | no (optional) |
 
 ### Transport Adapter Interface
 
-Transport implementations provide the following methods:
+Transport implementations are bound through `Transport.VTable` and must match:
 
-- `start(self: *Self) anyerror!void`
-- `stop(self: *Self) void`
-- `write(self: *Self, bytes: []const u8) error{OutOfMemory, WriteError}!void`
-- `read(self: *Self) error{ReadError}!?[]const u8`
-- `resize(self: *Self, cols: u16, rows: u16) anyerror!void`
-- `control(self: *Self, signal: ControlSignal) void`
+- `start(ptr: *anyopaque) anyerror!void`
+- `stop(ptr: *anyopaque) void`
+- `write(ptr: *anyopaque, bytes: []const u8) anyerror!usize`
+- `read(ptr: *anyopaque, buf: []u8) anyerror!usize`
+- `resize(ptr: *anyopaque, cols: u16, rows: u16) anyerror!void`
+- `control(ptr: *anyopaque, signal: ControlSignal) void`
 
 ### Breaking-Change Rules
 
