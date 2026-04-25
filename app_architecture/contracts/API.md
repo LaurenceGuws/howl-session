@@ -144,6 +144,15 @@ Any state ──deinit()──► (destroyed)
 - A resize to the same current dimensions still increments `resize_count` and notifies transport.
 - Transport errors are propagated; the session dims and counter are already committed.
 
+**Repeated-call semantics:**
+- Resize to same dims repeatedly: each call increments `resize_count` and notifies transport. No special casing.
+- Resize after invalid attempt: previous invalid resize (zero dims) left session unchanged; next resize starts fresh.
+
+**Transport failure post-conditions:**
+- Session dims are authoritative: not rolled back even if transport.resize() fails.
+- `resize_count` is committed: incremented before transport notification.
+- Dims remain observable through `cols` and `rows` fields; count through `resize_count`.
+
 ### control
 
 - Signature: `control(signal: ControlSignal) void`
@@ -156,6 +165,16 @@ Any state ──deinit()──► (destroyed)
 - Step 1 always occurs; transport attachment is not required for the session to record the signal.
 - Fire-and-forget: no error channel; transport.control() is void.
 - No terminal semantic reinterpretation; signal semantics are transport-defined.
+
+**Repeated-call semantics:**
+- Control signal recorded on every call: `last_control_signal` is overwritten with the latest signal.
+- Multiple identical signals: each call records and routes the signal; no deduplication or coalescing.
+- Control before start/after stop: signal is recorded and transport.control() is called; before-start behavior is transport-defined (may be no-op or queued).
+
+**Transport independence:**
+- Signal is always recorded, regardless of transport attachment or transport failure.
+- Transport.control() is void: no error channel; call is fire-and-forget.
+- Session remains in consistent state; all session-observable state (last_control_signal) is committed.
 
 ## Observability Fields
 
