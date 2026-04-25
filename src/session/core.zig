@@ -1,11 +1,11 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const types = @import("../types.zig");
-const transport_mod = @import("../transport.zig");
+const transport_api = @import("../transport.zig");
 
 pub const ControlSignal = types.ControlSignal;
 pub const SessionStatus = types.SessionStatus;
-pub const Transport = transport_mod.Transport;
+pub const Transport = transport_api.Transport;
 
 pub const Config = struct {
     allocator: std.mem.Allocator,
@@ -162,9 +162,9 @@ pub const Session = struct {
     }
 };
 
-const conformance = @import("../conformance.zig");
-const perf = @import("../perf.zig");
-const reliability = @import("../reliability.zig");
+const conformance_checkpoint = @import("../test_support/conformance_checkpoint.zig");
+const perf = @import("../test_support/perf_harness.zig");
+const reliability = @import("../test_support/reliability_harness.zig");
 
 test "init rejects zero cols" {
     const result = Session.init(.{ .allocator = std.testing.allocator, .cols = 0, .rows = 24, .pending_capacity = 4096 });
@@ -332,7 +332,7 @@ test "stop with null transport is no-op and sets stopped" {
 }
 
 test "start with MemTransport delegates to transport" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -350,7 +350,7 @@ test "start with MemTransport delegates to transport" {
 test "start/stop with UnixPtyTransport delegates lifecycle through session" {
     if (builtin.os.tag != .linux and builtin.os.tag != .macos) return error.SkipZigTest;
 
-    var pty = try transport_mod.UnixPtyTransport.init(std.testing.allocator, "/bin/bash", "while true; do sleep 1; done");
+    var pty = try transport_api.UnixPtyTransport.init(std.testing.allocator, "/bin/bash", "while true; do sleep 1; done");
     defer pty.deinit();
 
     var s = try Session.init(.{
@@ -369,7 +369,7 @@ test "start/stop with UnixPtyTransport delegates lifecycle through session" {
 }
 
 test "stop with MemTransport delegates to transport" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -386,7 +386,7 @@ test "stop with MemTransport delegates to transport" {
 }
 
 test "resize with transport delegates dims and notifies" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -413,7 +413,7 @@ test "resize without transport still updates session dimensions" {
 }
 
 test "control with transport routes signal" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -434,7 +434,7 @@ test "control without transport is no-op" {
 }
 
 test "feed/apply/reset unaffected by transport attachment" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -471,7 +471,7 @@ test "start from active returns AlreadyStarted, no status change" {
 }
 
 test "start from active does not double-start transport" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -485,7 +485,7 @@ test "start from active does not double-start transport" {
 }
 
 test "stop from active transitions to stopped and calls transport" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -500,7 +500,7 @@ test "stop from active transitions to stopped and calls transport" {
 }
 
 test "stop from idle transitions to stopped without calling transport" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -514,7 +514,7 @@ test "stop from idle transitions to stopped without calling transport" {
 }
 
 test "stop from stopped is idempotent, transport not called again" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -530,7 +530,7 @@ test "stop from stopped is idempotent, transport not called again" {
 }
 
 test "start from stopped restarts transport" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -554,7 +554,7 @@ test "start from stopped without transport transitions to active" {
 }
 
 test "full lifecycle cycle: idle-active-stopped-active" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -575,7 +575,7 @@ test "full lifecycle cycle: idle-active-stopped-active" {
 }
 
 test "start failure from idle leaves status idle" {
-    var ft = transport_mod.FailTransport.init();
+    var ft = transport_api.FailTransport.init();
     defer ft.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -588,9 +588,9 @@ test "start failure from idle leaves status idle" {
 }
 
 test "start failure from stopped leaves status stopped" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
-    var ft = transport_mod.FailTransport.init();
+    var ft = transport_api.FailTransport.init();
     defer ft.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -606,7 +606,7 @@ test "start failure from stopped leaves status stopped" {
 }
 
 test "start failure is repeatable and deterministic" {
-    var ft = transport_mod.FailTransport.init();
+    var ft = transport_api.FailTransport.init();
     defer ft.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -620,7 +620,7 @@ test "start failure is repeatable and deterministic" {
 }
 
 test "resize failure retains updated dims" {
-    var ft = transport_mod.FailTransport.init();
+    var ft = transport_api.FailTransport.init();
     defer ft.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -634,7 +634,7 @@ test "resize failure retains updated dims" {
 }
 
 test "resize failure is repeatable and deterministic" {
-    var ft = transport_mod.FailTransport.init();
+    var ft = transport_api.FailTransport.init();
     defer ft.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -649,7 +649,7 @@ test "resize failure is repeatable and deterministic" {
 }
 
 test "feed/apply/reset unaffected after start failure" {
-    var ft = transport_mod.FailTransport.init();
+    var ft = transport_api.FailTransport.init();
     defer ft.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -691,7 +691,7 @@ test "resize to same dims still increments counter" {
 }
 
 test "failed resize still increments counter and retains dims" {
-    var ft = transport_mod.FailTransport.init();
+    var ft = transport_api.FailTransport.init();
     defer ft.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -729,7 +729,7 @@ test "control records last signal without transport" {
 }
 
 test "control records last signal with transport" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -743,7 +743,7 @@ test "control records last signal with transport" {
 }
 
 test "control with FailTransport still records signal on session" {
-    var ft = transport_mod.FailTransport.init();
+    var ft = transport_api.FailTransport.init();
     defer ft.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -769,7 +769,7 @@ test "resize and control do not affect queue semantics" {
 
 // FC-1: Lifecycle transitions
 test "conformance FC-1: lifecycle transition checkpoint sequence" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -778,33 +778,33 @@ test "conformance FC-1: lifecycle transition checkpoint sequence" {
     });
     defer s.deinit();
 
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     try s.start();
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .active, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     try std.testing.expectError(error.AlreadyStarted, s.start());
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .active, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     s.stop();
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .stopped, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     try s.start();
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .active, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 }
 
@@ -816,46 +816,46 @@ test "conformance FC-2: queue capacity checkpoint sequence" {
     });
     defer s.deinit();
 
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     try s.feed("abc");
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 3 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     try s.feed("de");
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 5 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     try std.testing.expectError(error.QueueFull, s.feed("overflow!"));
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 5 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     try s.feed("fgh");
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 8 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     _ = s.apply();
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     try s.feed("xyz");
     s.reset();
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 }
 
@@ -868,39 +868,39 @@ test "conformance FC-3: resize and control sequencing checkpoint sequence" {
     defer s.deinit();
 
     try s.resize(100, 40);
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 100, .rows = 40, .resize_count = 1, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     try s.resize(100, 40);
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 100, .rows = 40, .resize_count = 2, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     try std.testing.expectError(error.InvalidDimensions, s.resize(0, 40));
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 100, .rows = 40, .resize_count = 2, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     s.control(.hangup);
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 100, .rows = 40, .resize_count = 2, .last_control_signal = ControlSignal.hangup, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     s.control(.terminate);
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 100, .rows = 40, .resize_count = 2, .last_control_signal = ControlSignal.terminate, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 }
 
 // FC-4: Failure-boundary behavior
 test "conformance FC-4: failure-boundary checkpoint sequence" {
-    var ft = transport_mod.FailTransport.init();
+    var ft = transport_api.FailTransport.init();
     defer ft.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -910,33 +910,33 @@ test "conformance FC-4: failure-boundary checkpoint sequence" {
     defer s.deinit();
 
     try std.testing.expectError(error.TransportFailed, s.start());
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     try std.testing.expectError(error.TransportFailed, s.start());
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 80, .rows = 24, .resize_count = 0, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     try std.testing.expectError(error.TransportFailed, s.resize(132, 50));
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 132, .rows = 50, .resize_count = 1, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 
     try std.testing.expectError(error.TransportFailed, s.resize(100, 40));
-    try conformance.Checkpoint.expectEqual(
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
         .{ .status = .idle, .cols = 100, .rows = 40, .resize_count = 2, .last_control_signal = null, .pending_len = 0 },
-        conformance.Checkpoint.capture(&s),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s),
     );
 }
 
 // FC-5: Null vs attached transport equivalence
 test "conformance FC-5: null vs attached transport session-state equivalence" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
 
     var s_null = try Session.init(.{
@@ -954,37 +954,37 @@ test "conformance FC-5: null vs attached transport session-state equivalence" {
 
     try s_null.start();
     try s_attached.start();
-    try conformance.Checkpoint.expectEqual(
-        conformance.Checkpoint.capture(&s_null),
-        conformance.Checkpoint.capture(&s_attached),
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s_null),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s_attached),
     );
 
     try s_null.resize(132, 50);
     try s_attached.resize(132, 50);
-    try conformance.Checkpoint.expectEqual(
-        conformance.Checkpoint.capture(&s_null),
-        conformance.Checkpoint.capture(&s_attached),
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s_null),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s_attached),
     );
 
     s_null.control(.interrupt);
     s_attached.control(.interrupt);
-    try conformance.Checkpoint.expectEqual(
-        conformance.Checkpoint.capture(&s_null),
-        conformance.Checkpoint.capture(&s_attached),
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s_null),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s_attached),
     );
 
     try s_null.feed("hello");
     try s_attached.feed("hello");
-    try conformance.Checkpoint.expectEqual(
-        conformance.Checkpoint.capture(&s_null),
-        conformance.Checkpoint.capture(&s_attached),
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s_null),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s_attached),
     );
 
     s_null.stop();
     s_attached.stop();
-    try conformance.Checkpoint.expectEqual(
-        conformance.Checkpoint.capture(&s_null),
-        conformance.Checkpoint.capture(&s_attached),
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s_null),
+        conformance_checkpoint.ConformanceCheckpoint.capture(&s_attached),
     );
 }
 
@@ -1104,7 +1104,7 @@ test "perf: feed 64-byte payload steady-state (Class A, warm capacity)" {
 
 // Reliability evidence
 test "reliability R-1: start/stop cycle stability" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -1118,19 +1118,19 @@ test "reliability R-1: start/stop cycle stability" {
         s.stop();
     }
 
-    const baseline = conformance.Checkpoint.capture(&s);
+    const baseline = conformance_checkpoint.ConformanceCheckpoint.capture(&s);
 
     for (0..reliability.CYCLES) |_| {
         try s.start();
         s.stop();
         try std.testing.expect(!mt.started);
-        const cp = conformance.Checkpoint.capture(&s);
-        try conformance.Checkpoint.expectEqual(baseline, cp);
+        const cp = conformance_checkpoint.ConformanceCheckpoint.capture(&s);
+        try conformance_checkpoint.ConformanceCheckpoint.expectEqual(baseline, cp);
     }
 }
 
 test "reliability R-2: error-path retry stability" {
-    var ft = transport_mod.FailTransport.init();
+    var ft = transport_api.FailTransport.init();
     defer ft.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -1143,12 +1143,12 @@ test "reliability R-2: error-path retry stability" {
         try std.testing.expectError(error.TransportFailed, s.start());
     }
 
-    const baseline = conformance.Checkpoint.capture(&s);
+    const baseline = conformance_checkpoint.ConformanceCheckpoint.capture(&s);
 
     for (0..reliability.CYCLES) |_| {
         try std.testing.expectError(error.TransportFailed, s.start());
-        const cp = conformance.Checkpoint.capture(&s);
-        try conformance.Checkpoint.expectEqual(baseline, cp);
+        const cp = conformance_checkpoint.ConformanceCheckpoint.capture(&s);
+        try conformance_checkpoint.ConformanceCheckpoint.expectEqual(baseline, cp);
     }
 }
 
@@ -1167,13 +1167,13 @@ test "reliability R-3: queue pressure at capacity" {
         _ = s.apply();
     }
 
-    const baseline = conformance.Checkpoint.capture(&s);
+    const baseline = conformance_checkpoint.ConformanceCheckpoint.capture(&s);
     try std.testing.expectEqual(@as(usize, 0), baseline.pending_len);
 
     for (0..reliability.CYCLES) |_| {
         try s.feed(&payload);
         _ = s.apply();
-        const cp = conformance.Checkpoint.capture(&s);
+        const cp = conformance_checkpoint.ConformanceCheckpoint.capture(&s);
         try std.testing.expectEqual(@as(usize, 0), cp.pending_len);
         try std.testing.expectEqual(baseline.resize_count, cp.resize_count);
         try std.testing.expectEqual(baseline.last_control_signal, cp.last_control_signal);
@@ -1206,7 +1206,7 @@ test "reliability R-4: resize/control churn stability" {
         try std.testing.expectEqual(@as(u16, 100), s.cols);
         try std.testing.expectEqual(@as(u16, 40), s.rows);
         try std.testing.expectEqual(
-            reliability.expectedResizeCount(initial_resize_count, @as(u32, @intCast(i + 1))),
+            reliability.expectedResizeCountAfterCycles(initial_resize_count, @as(u32, @intCast(i + 1))),
             s.resize_count,
         );
         try std.testing.expectEqual(ControlSignal.interrupt, s.last_control_signal.?);

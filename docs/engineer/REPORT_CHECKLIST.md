@@ -32,6 +32,8 @@ Run:
 zig build
 zig build test
 rg -n "compat[^ib]|fallback|workaround|shim" --glob '*.zig' src
+test ! -f src/main.zig
+find src -maxdepth 1 -type f -name '*.zig' | rg -n 'src/(conformance|ops|perf|reliability|snapshot)\\.zig' || true
 git diff --name-only
 ```
 
@@ -39,6 +41,7 @@ Then verify:
 1. Edited files match the planned batch intent.
 2. No rule was violated during execution.
 3. Any unavoidable scope drift is reported explicitly as a blocker.
+4. No scaffold residue or misplaced test helper files were introduced.
 
 ## Build and Test
 

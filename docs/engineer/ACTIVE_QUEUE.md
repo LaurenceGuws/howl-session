@@ -30,3 +30,5 @@ Queue is open for `M3+` planning.
   - `zig build`
   - `zig build test`
   - `rg -n "compat[^ib]|fallback|workaround|shim" --glob '*.zig' src`
+  - `test ! -f src/main.zig`
+  - `find src -maxdepth 1 -type f -name '*.zig' | rg -n 'src/(conformance|ops|perf|reliability|snapshot)\\.zig' || true`

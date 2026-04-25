@@ -10,11 +10,11 @@ pub const FailTransport = _fail.FailTransport;
 pub const UnixPtyTransport = _unix_pty.UnixPtyTransport;
 
 test "session holds transport reference" {
-    const session_mod = @import("session.zig");
+    const session_api = @import("session.zig");
     var mt = MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     const t = mt.transport();
-    var s = try session_mod.Session.init(.{
+    var s = try session_api.Session.init(.{
         .allocator = std.testing.allocator,
         .cols = 80,
         .rows = 24,

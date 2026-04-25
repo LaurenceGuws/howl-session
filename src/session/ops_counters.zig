@@ -1,13 +1,13 @@
 const std = @import("std");
 const core = @import("core.zig");
 const Session = core.Session;
-const transport_mod = @import("../transport.zig");
-const ops_mod = @import("../ops.zig");
+const transport_api = @import("../transport.zig");
+const ops_checkpoint = @import("../test_support/session_ops_checkpoint.zig");
 
 test "ops: lifecycle attempt/success/failure boundaries" {
-    var ft = transport_mod.FailTransport.init();
+    var ft = transport_api.FailTransport.init();
     defer ft.deinit();
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -120,7 +120,7 @@ test "ops: reset_calls accounting" {
 }
 
 test "ops: resize/control accounting" {
-    var ft = transport_mod.FailTransport.init();
+    var ft = transport_api.FailTransport.init();
     defer ft.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -159,7 +159,7 @@ test "ops: resize/control accounting" {
 }
 
 test "ops: counters accumulate across lifecycle transitions" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -191,18 +191,18 @@ test "ops: counters accumulate across lifecycle transitions" {
     try std.testing.expectEqual(@as(u64, 5), s.ops.bytes_applied);
 }
 
-test "ops: OpsCheckpoint captures all counter fields" {
+test "ops: SessionOpsCheckpoint captures all counter fields" {
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
         .cols = 80, .rows = 24, .pending_capacity = 256,
     });
     defer s.deinit();
 
-    const before = ops_mod.OpsCheckpoint.capture(&s);
+    const before = ops_checkpoint.SessionOpsCheckpoint.capture(&s);
     try s.feed("hello");
     _ = s.apply();
     s.control(.interrupt);
-    const after = ops_mod.OpsCheckpoint.capture(&s);
+    const after = ops_checkpoint.SessionOpsCheckpoint.capture(&s);
 
     try std.testing.expectEqual(@as(u32, 0), before.feed_accepted);
     try std.testing.expectEqual(@as(u32, 1), after.feed_accepted);

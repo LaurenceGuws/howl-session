@@ -1,4 +1,4 @@
-pub fn expectEqual(expected: anytype, actual: anytype) !void {
+pub fn expectSnapshotEqual(expected: anytype, actual: anytype) !void {
     const std = @import("std");
     try std.testing.expectEqual(expected.cols, actual.cols);
     try std.testing.expectEqual(expected.rows, actual.rows);

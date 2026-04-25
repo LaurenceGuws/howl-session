@@ -1,4 +1,4 @@
-pub const OpsCheckpoint = struct {
+pub const SessionOpsCheckpoint = struct {
     start_attempts: u32,
     start_successes: u32,
     start_failures: u32,
@@ -14,7 +14,7 @@ pub const OpsCheckpoint = struct {
     resize_transport_errors: u32,
     control_calls: u32,
 
-    pub fn capture(s: anytype) OpsCheckpoint {
+    pub fn capture(s: anytype) SessionOpsCheckpoint {
         return .{
             .start_attempts = s.ops.start_attempts,
             .start_successes = s.ops.start_successes,
@@ -33,7 +33,7 @@ pub const OpsCheckpoint = struct {
         };
     }
 
-    pub fn expectEqual(expected: OpsCheckpoint, actual: OpsCheckpoint) !void {
+    pub fn expectEqual(expected: SessionOpsCheckpoint, actual: SessionOpsCheckpoint) !void {
         const std = @import("std");
         try std.testing.expectEqual(expected.start_attempts, actual.start_attempts);
         try std.testing.expectEqual(expected.start_successes, actual.start_successes);

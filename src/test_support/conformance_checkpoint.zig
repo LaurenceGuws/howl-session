@@ -1,6 +1,6 @@
-const types = @import("types.zig");
+const types = @import("../types.zig");
 
-pub const Checkpoint = struct {
+pub const ConformanceCheckpoint = struct {
     status: types.SessionStatus,
     cols: u16,
     rows: u16,
@@ -8,7 +8,7 @@ pub const Checkpoint = struct {
     last_control_signal: ?types.ControlSignal,
     pending_len: usize,
 
-    pub fn capture(s: anytype) Checkpoint {
+    pub fn capture(s: anytype) ConformanceCheckpoint {
         return .{
             .status = s.status,
             .cols = s.cols,
@@ -19,7 +19,7 @@ pub const Checkpoint = struct {
         };
     }
 
-    pub fn expectEqual(expected: Checkpoint, actual: Checkpoint) !void {
+    pub fn expectEqual(expected: ConformanceCheckpoint, actual: ConformanceCheckpoint) !void {
         const std = @import("std");
         try std.testing.expectEqual(expected.status, actual.status);
         try std.testing.expectEqual(expected.cols, actual.cols);

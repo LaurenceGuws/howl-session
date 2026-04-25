@@ -44,6 +44,14 @@ Engineer must not own:
 - If a task needs analysis/design, it stays with architect and is not delegated.
 - If a milestone has a declared catch-up phase, queue must remain locked to that milestone until closure.
 
+## Topology Hygiene Rules
+
+- Keep `src/` root intentionally small and product-facing: `root.zig`, facade files, and shared product primitives only.
+- Keep implementation detail in subsystem folders (`src/session/`, `src/transport/`).
+- Keep test-only helpers in `src/test_support/` only.
+- Reject batches that introduce scaffold leftovers (`src/main.zig`) or mixed-purpose helper files back into `src/` root.
+- Symbol names must describe domain purpose, not ticket history or temporary intent.
+
 ## Acceptance Gate
 
 Accept only when all are true:

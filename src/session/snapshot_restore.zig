@@ -4,9 +4,9 @@ const Session = core.Session;
 const SessionSnapshot = core.SessionSnapshot;
 const SessionStatus = core.SessionStatus;
 const ControlSignal = core.ControlSignal;
-const transport_mod = @import("../transport.zig");
-const snapshot_mod = @import("../snapshot.zig");
-const ops_mod = @import("../ops.zig");
+const transport_api = @import("../transport.zig");
+const snapshot_assert = @import("../test_support/snapshot_assert.zig");
+const ops_checkpoint = @import("../test_support/session_ops_checkpoint.zig");
 
 test "snapshot/restore: round-trip identity" {
     var s = try Session.init(.{
@@ -19,7 +19,7 @@ test "snapshot/restore: round-trip identity" {
     s.control(.interrupt);
 
     const sn = s.snapshot();
-    try snapshot_mod.expectEqual(sn, s.snapshot());
+    try snapshot_assert.expectSnapshotEqual(sn, s.snapshot());
 
     try s.resize(200, 60);
     s.control(.terminate);
@@ -51,7 +51,7 @@ test "snapshot/restore: restore replaces state after mutations" {
 
     try s.restore(baseline);
 
-    try snapshot_mod.expectEqual(baseline, s.snapshot());
+    try snapshot_assert.expectSnapshotEqual(baseline, s.snapshot());
     try std.testing.expectEqual(@as(usize, 0), s.pending.items.len);
 }
 
@@ -70,7 +70,7 @@ test "snapshot/restore: restore is idempotent" {
     try s.restore(sn);
     const after_second = s.snapshot();
 
-    try snapshot_mod.expectEqual(after_first, after_second);
+    try snapshot_assert.expectSnapshotEqual(after_first, after_second);
 }
 
 test "snapshot/restore: invalid snapshot rejected with no partial mutation" {
@@ -92,7 +92,7 @@ test "snapshot/restore: invalid snapshot rejected with no partial mutation" {
         .last_control_signal = null,
     };
     try std.testing.expectError(error.InvalidSnapshot, s.restore(bad_cols));
-    try snapshot_mod.expectEqual(before, s.snapshot());
+    try snapshot_assert.expectSnapshotEqual(before, s.snapshot());
 
     const bad_rows = SessionSnapshot{
         .cols = 80,
@@ -102,11 +102,11 @@ test "snapshot/restore: invalid snapshot rejected with no partial mutation" {
         .last_control_signal = null,
     };
     try std.testing.expectError(error.InvalidSnapshot, s.restore(bad_rows));
-    try snapshot_mod.expectEqual(before, s.snapshot());
+    try snapshot_assert.expectSnapshotEqual(before, s.snapshot());
 }
 
 test "snapshot/restore: active status in snapshot restores as stopped" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -127,7 +127,7 @@ test "snapshot/restore: active status in snapshot restores as stopped" {
 }
 
 test "snapshot/restore: transport attachment unchanged by restore" {
-    var mt = transport_mod.MemTransport.init(std.testing.allocator);
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
@@ -172,15 +172,15 @@ test "snapshot/restore: ops counters unaffected by restore" {
     _ = s.apply();
     s.control(.interrupt);
 
-    const ops_before = ops_mod.OpsCheckpoint.capture(&s);
+    const ops_before = ops_checkpoint.SessionOpsCheckpoint.capture(&s);
     const sn = s.snapshot();
 
     try s.resize(100, 40);
-    const ops_pre_restore = ops_mod.OpsCheckpoint.capture(&s);
+    const ops_pre_restore = ops_checkpoint.SessionOpsCheckpoint.capture(&s);
     try s.restore(sn);
 
-    const ops_after = ops_mod.OpsCheckpoint.capture(&s);
+    const ops_after = ops_checkpoint.SessionOpsCheckpoint.capture(&s);
 
     try std.testing.expectEqual(ops_before.resize_valid_calls + 1, ops_pre_restore.resize_valid_calls);
-    try ops_mod.OpsCheckpoint.expectEqual(ops_pre_restore, ops_after);
+    try ops_checkpoint.SessionOpsCheckpoint.expectEqual(ops_pre_restore, ops_after);
 }
