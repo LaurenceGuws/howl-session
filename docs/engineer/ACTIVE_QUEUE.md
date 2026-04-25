@@ -42,12 +42,18 @@
 | `M4-A2` | done | `57a8dc4` | Resize/Control Enforcement Audit (verified correct) |
 | `M4-A3` | done | `b9bb00e` | Resize/Control Evidence Tests + Queue Closeout |
 
-## M5 Planning (Host Integration Readiness)
+## M5-A (Host Integration Readiness - Contract Closure)
+| Ticket | Status | Commit | Intent |
+| --- | --- | --- | --- |
+| `M5-A1` | done | `d5c9e49` | Host API Contract Closure |
+| `M5-A2` | done | `9ea48b7` | Root/API Conformance Tests |
 
-Pending queue definition. Next session:
-1. Scope host API surface and integration patterns
-2. Define stable public-facing contracts
-3. Plan enforcement and evidence strategy
+## M5-B Planning (Integration Patterns and Multi-Host Support)
+
+Queue definition pending. Planned scope:
+1. Define host adapter interface and contract
+2. Add integration patterns guide (async loop, error handling, resize coordination)
+3. Plan conformance patterns for multiple host types
 
 Guardrail: One ticket per commit. Mandatory validation per ticket:
 - `zig build`
