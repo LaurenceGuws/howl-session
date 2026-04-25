@@ -21,4 +21,4 @@ It is intentionally non-implementation-detailed.
 
 ## Current Target
 
-Current milestone target is `M2` Transport Foundation catch-up closure.
+Current milestone target is `M3` Lifecycle Safety planning and entry.

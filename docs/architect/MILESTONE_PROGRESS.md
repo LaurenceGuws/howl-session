@@ -4,8 +4,8 @@
 | --- | --- | --- | --- |
 | `M0` Repo Scaffold | `done` | `app_architecture/authorities/MILESTONE.md` | Package scaffold, docs baseline, and local validation flow established. |
 | `M1` Session API Foundation | `done` | `app_architecture/authorities/MILESTONE.md` | Session API contracts and baseline lifecycle/queue semantics established. |
-| `M2` Transport Foundation | `active` | `app_architecture/authorities/MILESTONE.md` | Seam and test adapters are complete; PTY/process transport completion is the active catch-up focus. |
-| `M3` Lifecycle Safety | `paused` | `app_architecture/authorities/MILESTONE.md` | Frozen pending M2 catch-up closure. |
+| `M2` Transport Foundation | `done` | `app_architecture/authorities/MILESTONE.md` | Transport seam, test adapters, Unix PTY/process adapter, and topology refactor complete. |
+| `M3` Lifecycle Safety | `active` | `app_architecture/authorities/MILESTONE.md` | Startup/shutdown/restart/error boundary hardening and explicit lifecycle contracts. |
 | `M4` Resize and Control Flow | `paused` | `app_architecture/authorities/MILESTONE.md` | Frozen pending M2 catch-up closure. |
 | `M5` Host Integration Readiness | `paused` | `app_architecture/authorities/MILESTONE.md` | Frozen pending M2 catch-up closure. |
 | `M6` Conformance Evidence | `paused` | `app_architecture/authorities/MILESTONE.md` | Frozen pending M2 catch-up closure. |
