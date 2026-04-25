@@ -40,7 +40,7 @@
 | --- | --- | --- | --- |
 | `M4-A1` | done | `c2d522d` | Resize/Control Contract Closure |
 | `M4-A2` | done | `57a8dc4` | Resize/Control Enforcement Audit (verified correct) |
-| `M4-A3` | done | `(this commit)` | Resize/Control Evidence Tests + Queue Closeout |
+| `M4-A3` | done | `b9bb00e` | Resize/Control Evidence Tests + Queue Closeout |
 
 ## M5 Planning (Host Integration Readiness)
 

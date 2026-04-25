@@ -1335,9 +1335,7 @@ test "lifecycle contract guarantee: control always records signal before transpo
     try std.testing.expectEqual(ControlSignal.terminate, s_no_t.last_control_signal.?);
 }
 
-// ── M4-A3 Resize/Control Evidence Tests ─────────────────────────────────────
-
-test "M4-A3: resize contract: valid resize increments counter and records dims" {
+test "resize contract: valid resize increments counter and records dims" {
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
         .cols = 80, .rows = 24, .pending_capacity = 256,
@@ -1350,7 +1348,7 @@ test "M4-A3: resize contract: valid resize increments counter and records dims" 
     try std.testing.expectEqual(@as(u32, 1), s.resize_count);
 }
 
-test "M4-A3: resize contract: same-dims resize still increments counter" {
+test "resize contract: same-dims resize still increments counter" {
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
         .cols = 80, .rows = 24, .pending_capacity = 256,
@@ -1364,7 +1362,7 @@ test "M4-A3: resize contract: same-dims resize still increments counter" {
     try std.testing.expectEqual(@as(u32, 2), s.resize_count);
 }
 
-test "M4-A3: resize contract: repeated different resizes increment counter independently" {
+test "resize contract: repeated different resizes increment counter independently" {
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
         .cols = 80, .rows = 24, .pending_capacity = 256,
@@ -1380,7 +1378,7 @@ test "M4-A3: resize contract: repeated different resizes increment counter indep
     try std.testing.expectEqual(@as(u16, 24), s.rows);
 }
 
-test "M4-A3: resize contract: invalid zero-dim returns error without state change" {
+test "resize contract: invalid zero-dim returns error without state change" {
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
         .cols = 80, .rows = 24, .pending_capacity = 256,
@@ -1396,7 +1394,7 @@ test "M4-A3: resize contract: invalid zero-dim returns error without state chang
     try std.testing.expectEqual(@as(u32, 1), s.resize_count);
 }
 
-test "M4-A3: resize contract: transport failure leaves dims committed" {
+test "resize contract: transport failure leaves dims committed" {
     var ft = transport_api.FailTransport.init();
     defer ft.deinit();
     var s = try Session.init(.{
@@ -1412,7 +1410,7 @@ test "M4-A3: resize contract: transport failure leaves dims committed" {
     try std.testing.expectEqual(@as(u32, 1), s.resize_count);
 }
 
-test "M4-A3: control contract: signal always recorded regardless of transport" {
+test "control contract: signal always recorded regardless of transport" {
     var ft = transport_api.FailTransport.init();
     defer ft.deinit();
     var s = try Session.init(.{
@@ -1429,7 +1427,7 @@ test "M4-A3: control contract: signal always recorded regardless of transport" {
     try std.testing.expectEqual(ControlSignal.terminate, s.last_control_signal.?);
 }
 
-test "M4-A3: control contract: repeated signals overwrite, no deduplication" {
+test "control contract: repeated signals overwrite, no deduplication" {
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
         .cols = 80, .rows = 24, .pending_capacity = 256,
@@ -1443,7 +1441,7 @@ test "M4-A3: control contract: repeated signals overwrite, no deduplication" {
     try std.testing.expectEqual(ControlSignal.interrupt, s.last_control_signal.?);
 }
 
-test "M4-A3: control contract: control before start is safe" {
+test "control contract: control before start is safe" {
     var s = try Session.init(.{
         .allocator = std.testing.allocator,
         .cols = 80, .rows = 24, .pending_capacity = 256,
@@ -1455,7 +1453,7 @@ test "M4-A3: control contract: control before start is safe" {
     try std.testing.expectEqual(SessionStatus.idle, s.status);
 }
 
-test "M4-A3: control contract: control after stop is safe" {
+test "control contract: control after stop is safe" {
     var mt = transport_api.MemTransport.init(std.testing.allocator);
     defer mt.deinit();
     var s = try Session.init(.{
