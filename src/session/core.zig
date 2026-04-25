@@ -1213,3 +1213,139 @@ test "reliability R-4: resize/control churn stability" {
         try std.testing.expectEqual(@as(usize, 0), s.pending.items.len);
     }
 }
+
+// ── M3-A3 Lifecycle Evidence (explicit contract verification) ─────────────────
+
+test "M3-A3: lifecycle error-path stability: transport failure leaves session recoverable" {
+    var ft = transport_api.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+        .transport = ft.transport(),
+    });
+    defer s.deinit();
+
+    const baseline = conformance_checkpoint.ConformanceCheckpoint.capture(&s);
+
+    // First start fails; session state unchanged
+    try std.testing.expectError(error.TransportFailed, s.start());
+    const after_fail = conformance_checkpoint.ConformanceCheckpoint.capture(&s);
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(baseline, after_fail);
+
+    // Feed/apply work unaffected by transport failure
+    try s.feed("data");
+    try std.testing.expectEqual(@as(usize, 4), s.apply());
+
+    // Session remains retryable (next start would attempt again with different transport)
+    try std.testing.expectEqual(SessionStatus.idle, s.status);
+}
+
+test "M3-A3: lifecycle contract guarantee: stop idempotence after transport success" {
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+
+    try s.start();
+    s.stop();
+    const after_first_stop = conformance_checkpoint.ConformanceCheckpoint.capture(&s);
+    try std.testing.expectEqual(SessionStatus.stopped, after_first_stop.status);
+
+    // Second stop is idempotent: no state change
+    s.stop();
+    const after_second_stop = conformance_checkpoint.ConformanceCheckpoint.capture(&s);
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(after_first_stop, after_second_stop);
+}
+
+test "M3-A3: lifecycle contract guarantee: restart from stopped transitions to active" {
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+
+    // First cycle
+    try s.start();
+    try std.testing.expectEqual(SessionStatus.active, s.status);
+    s.stop();
+    try std.testing.expectEqual(SessionStatus.stopped, s.status);
+
+    // Restart: from stopped, start() activates again
+    try s.start();
+    try std.testing.expectEqual(SessionStatus.active, s.status);
+    try std.testing.expect(mt.started);
+}
+
+test "M3-A3: lifecycle contract guarantee: double-start returns AlreadyStarted without transport call" {
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+
+    try s.start();
+    const after_first = conformance_checkpoint.ConformanceCheckpoint.capture(&s);
+
+    // Second start returns error and does not call transport
+    try std.testing.expectError(error.AlreadyStarted, s.start());
+
+    // Status and transport state unchanged
+    const after_double = conformance_checkpoint.ConformanceCheckpoint.capture(&s);
+    try conformance_checkpoint.ConformanceCheckpoint.expectEqual(after_first, after_double);
+}
+
+test "M3-A3: lifecycle contract guarantee: resize commits dims before transport error" {
+    var ft = transport_api.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+        .transport = ft.transport(),
+    });
+    defer s.deinit();
+
+    // Resize to new dims; transport will fail but dims are authoritative
+    try std.testing.expectError(error.TransportFailed, s.resize(132, 50));
+
+    // Dims are committed despite transport error
+    try std.testing.expectEqual(@as(u16, 132), s.cols);
+    try std.testing.expectEqual(@as(u16, 50), s.rows);
+
+    // resize_count incremented
+    try std.testing.expectEqual(@as(u32, 1), s.resize_count);
+}
+
+test "M3-A3: lifecycle contract guarantee: control always records signal before transport" {
+    var ft = transport_api.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+        .transport = ft.transport(),
+    });
+    defer s.deinit();
+
+    // Control delivers signal to session regardless of transport
+    s.control(.interrupt);
+    try std.testing.expectEqual(ControlSignal.interrupt, s.last_control_signal.?);
+
+    // Control with no transport is also recorded
+    var s_no_t = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+    });
+    defer s_no_t.deinit();
+    s_no_t.control(.terminate);
+    try std.testing.expectEqual(ControlSignal.terminate, s_no_t.last_control_signal.?);
+}
