@@ -33,7 +33,7 @@
 | --- | --- | --- | --- |
 | `M3-A1` | done | `5ff6ce7` | Lifecycle Contract Closure |
 | `M3-A2` | done | `b8f4aff` | Lifecycle Enforcement (verified in-place) |
-| `M3-A3` | done | `(this commit)` | Lifecycle Evidence Tests + Queue Closeout |
+| `M3-A3` | done | `093c811` | Lifecycle Evidence Tests + Queue Closeout |
 
 ## M4 Planning (Resize and Control Flow)
 
