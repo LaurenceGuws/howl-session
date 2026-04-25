@@ -264,3 +264,98 @@ test "unix pty transport: resize and stop are deterministic" {
     try std.testing.expect(pty.master_fd == null);
     try std.testing.expect(pty.child_pid == null);
 }
+
+test "unix pty transport: read before start returns NotStarted" {
+    if (builtin.os.tag != .linux and builtin.os.tag != .macos) return error.SkipZigTest;
+
+    var pty = try UnixPtyTransport.init(std.testing.allocator, "/bin/bash", "true");
+    defer pty.deinit();
+    var t = pty.transport();
+
+    var buf: [64]u8 = undefined;
+    try std.testing.expectError(error.NotStarted, t.read(&buf));
+}
+
+test "unix pty transport: write before start returns NotStarted" {
+    if (builtin.os.tag != .linux and builtin.os.tag != .macos) return error.SkipZigTest;
+
+    var pty = try UnixPtyTransport.init(std.testing.allocator, "/bin/bash", "true");
+    defer pty.deinit();
+    var t = pty.transport();
+
+    try std.testing.expectError(error.NotStarted, t.write("hello"));
+}
+
+test "unix pty transport: resize before start returns NotStarted" {
+    if (builtin.os.tag != .linux and builtin.os.tag != .macos) return error.SkipZigTest;
+
+    var pty = try UnixPtyTransport.init(std.testing.allocator, "/bin/bash", "true");
+    defer pty.deinit();
+    var t = pty.transport();
+
+    try std.testing.expectError(error.NotStarted, t.resize(80, 24));
+}
+
+test "unix pty transport: start called twice returns AlreadyStarted" {
+    if (builtin.os.tag != .linux and builtin.os.tag != .macos) return error.SkipZigTest;
+
+    var pty = try UnixPtyTransport.init(std.testing.allocator, "/bin/bash", "while true; do sleep 1; done");
+    defer pty.deinit();
+    var t = pty.transport();
+
+    try t.start();
+    defer t.stop();
+    try std.testing.expectError(error.AlreadyStarted, t.start());
+    try std.testing.expect(pty.started);
+}
+
+test "unix pty transport: stop is idempotent" {
+    if (builtin.os.tag != .linux and builtin.os.tag != .macos) return error.SkipZigTest;
+
+    var pty = try UnixPtyTransport.init(std.testing.allocator, "/bin/bash", "while true; do sleep 1; done");
+    defer pty.deinit();
+    var t = pty.transport();
+
+    try t.start();
+    t.stop();
+    try std.testing.expect(!pty.started);
+
+    // Second stop is safe and idempotent
+    t.stop();
+    try std.testing.expect(!pty.started);
+    try std.testing.expect(pty.master_fd == null);
+    try std.testing.expect(pty.child_pid == null);
+}
+
+test "unix pty transport: control before start is safe" {
+    if (builtin.os.tag != .linux and builtin.os.tag != .macos) return error.SkipZigTest;
+
+    var pty = try UnixPtyTransport.init(std.testing.allocator, "/bin/bash", "true");
+    defer pty.deinit();
+    var t = pty.transport();
+
+    // Control signals before start are safe no-ops
+    t.control(.hangup);
+    t.control(.interrupt);
+    t.control(.terminate);
+    t.control(.resize_notify);
+    try std.testing.expect(!pty.started);
+}
+
+test "unix pty transport: control after stop is safe" {
+    if (builtin.os.tag != .linux and builtin.os.tag != .macos) return error.SkipZigTest;
+
+    var pty = try UnixPtyTransport.init(std.testing.allocator, "/bin/bash", "while true; do sleep 1; done");
+    defer pty.deinit();
+    var t = pty.transport();
+
+    try t.start();
+    t.stop();
+
+    // Control signals after stop are safe no-ops
+    t.control(.hangup);
+    t.control(.interrupt);
+    t.control(.terminate);
+    t.control(.resize_notify);
+    try std.testing.expect(!pty.started);
+}
