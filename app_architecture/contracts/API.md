@@ -25,7 +25,7 @@ Typed enum of observable session states:
 ## Ownership Boundaries
 
 - `howl-session` owns session lifecycle and transport orchestration.
-- `howl-terminal` owns terminal semantics; session consumes its public API only.
+- Terminal semantics are external to this module; session consumes terminal-core public APIs only.
 - Host apps own SDL/window/input/renderer concerns; session is host-neutral.
 
 ## Config Fields
@@ -285,5 +285,5 @@ The following changes are **not** breaking:
 ## Stop Conditions
 
 Engineer must stop and report if any API boundary requires:
-- howl-terminal semantic changes to satisfy the session contract.
+- terminal-core semantic changes to satisfy the session contract.
 - SDL or renderer types to express any session API parameter or return value.

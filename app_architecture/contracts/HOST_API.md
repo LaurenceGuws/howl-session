@@ -85,6 +85,6 @@ The following changes are NOT breaking:
 ## Non-Goals
 
 - Owning or exposing SDL/window/input/renderer types.
-- Owning terminal semantic types (those belong to `howl-terminal`).
+- Owning terminal semantic types.
 - Providing host app policy or packaging.
 - Providing compatibility shims or fallback paths for removed symbols.

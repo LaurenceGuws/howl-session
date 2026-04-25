@@ -2,5 +2,5 @@
 
 - Owning host UI/event toolkit code.
 - Owning renderer frame generation/output APIs.
-- Owning terminal semantics already frozen in `howl-terminal`.
+- Owning terminal semantics.
 - Shipping compatibility/fallback/workaround shim paths.

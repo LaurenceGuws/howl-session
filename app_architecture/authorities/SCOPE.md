@@ -8,7 +8,7 @@ Purpose: define what `howl-session` owns and what it does not own.
 
 ## In Scope
 
-- `howl-terminal` engine lifecycle composition
+- terminal engine lifecycle composition
 - PTY/process transport lifecycle
 - feed/apply/reset boundary orchestration
 - resize/control boundary flow

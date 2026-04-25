@@ -87,4 +87,4 @@ The current M7 gate is:
 - No PTY process spawn or I/O throughput claims.
 - No cross-platform absolute timing guarantees.
 - No host-app frame-budget claims.
-- No claims about `howl-terminal` rendering performance.
+- No claims about external terminal-engine rendering performance.

@@ -3,7 +3,7 @@
 Shared host session runtime for Howl hosts.
 
 Scope:
-- `howl-terminal` engine lifecycle composition
+- terminal engine lifecycle composition
 - transport/session loop boundaries (feed/apply/resize/control)
 - host-neutral session orchestration
 

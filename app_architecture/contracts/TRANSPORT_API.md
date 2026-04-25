@@ -107,4 +107,4 @@ The Unix PTY adapter (`UnixPtyTransport`) is the canonical process-based transpo
 
 Engineer must stop and report if any transport boundary requires:
 - SDL or renderer types to express any parameter or return value.
-- howl-terminal semantic changes to satisfy the transport contract.
+- terminal-core semantic changes to satisfy the transport contract.

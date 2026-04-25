@@ -4,7 +4,7 @@
 
 - Owns session lifecycle and transport orchestration only.
 - Must expose host-neutral APIs (no SDL/window/renderer types).
-- Consumes `howl-terminal` public API; does not reach internals.
+- Consumes the terminal-core public API only; does not reach internals.
 
 ## Forbidden Coupling
 
