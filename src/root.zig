@@ -102,3 +102,48 @@ test "host API: facade wiring — session symbols match sub-module origins" {
         std.debug.assert(SessionStatus == s_core.SessionStatus);
     }
 }
+
+test "host API: SessionConfig transport field present with correct default" {
+    comptime {
+        std.debug.assert(@hasField(SessionConfig, "transport"));
+        const default_config: SessionConfig = .{
+            .allocator = undefined,
+            .cols = 80,
+            .rows = 24,
+            .pending_capacity = 4096,
+        };
+        std.debug.assert(default_config.transport == null);
+    }
+}
+
+test "host API: method availability and accessibility" {
+    comptime {
+        _ = Session.init;
+        _ = Session.deinit;
+        _ = Session.start;
+        _ = Session.stop;
+        _ = Session.feed;
+        _ = Session.apply;
+        _ = Session.reset;
+        _ = Session.resize;
+        _ = Session.control;
+    }
+}
+
+test "host API: observable field types (freeze)" {
+    const t = std.debug.assert;
+    comptime {
+        var zeroed: Session = undefined;
+        zeroed.status = .idle;
+        zeroed.cols = 0;
+        zeroed.rows = 0;
+        zeroed.resize_count = 0;
+        zeroed.last_control_signal = null;
+
+        t(@TypeOf(zeroed.status) == SessionStatus);
+        t(@TypeOf(zeroed.cols) == u16);
+        t(@TypeOf(zeroed.rows) == u16);
+        t(@TypeOf(zeroed.resize_count) == u32);
+        t(@TypeOf(zeroed.last_control_signal) == ?ControlSignal);
+    }
+}
