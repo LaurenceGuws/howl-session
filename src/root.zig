@@ -79,3 +79,26 @@ test "host API: Transport vtable methods present" {
         _ = Transport.control;
     }
 }
+
+test "host API: facade wiring — transport symbols match sub-module origins" {
+    const t_iface = @import("transport/interface.zig");
+    const t_mem = @import("transport/mem.zig");
+    const t_fail = @import("transport/fail.zig");
+    const t_pty = @import("transport/unix_pty.zig");
+    comptime {
+        std.debug.assert(Transport == t_iface.Transport);
+        std.debug.assert(MemTransport == t_mem.MemTransport);
+        std.debug.assert(FailTransport == t_fail.FailTransport);
+        std.debug.assert(UnixPtyTransport == t_pty.UnixPtyTransport);
+    }
+}
+
+test "host API: facade wiring — session symbols match sub-module origins" {
+    const s_core = @import("session/core.zig");
+    comptime {
+        std.debug.assert(Session == s_core.Session);
+        std.debug.assert(SessionConfig == s_core.Config);
+        std.debug.assert(ControlSignal == s_core.ControlSignal);
+        std.debug.assert(SessionStatus == s_core.SessionStatus);
+    }
+}
