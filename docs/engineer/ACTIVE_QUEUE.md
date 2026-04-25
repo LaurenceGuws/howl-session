@@ -2,7 +2,7 @@
 
 ## Current State
 
-`M3` Lifecycle Safety execution complete. Queue open for `M4+` planning.
+`M4` Resize/Control Flow execution complete. Queue open for `M5+` planning.
 
 ## Read Before Execution
 
@@ -11,7 +11,7 @@
 - `docs/architect/MILESTONE_PROGRESS.md`
 - `app_architecture/contracts/API.md`
 
-## M2 + M3 Closure Batches
+## M2 + M3 + M4 Closure Batches
 
 ### M2-R (Topology Refactor)
 | Ticket | Status | Commit | Intent |
@@ -35,11 +35,18 @@
 | `M3-A2` | done | `b8f4aff` | Lifecycle Enforcement (verified in-place) |
 | `M3-A3` | done | `093c811` | Lifecycle Evidence Tests + Queue Closeout |
 
-## M4 Planning (Resize and Control Flow)
+### M4-A (Resize and Control Flow)
+| Ticket | Status | Commit | Intent |
+| --- | --- | --- | --- |
+| `M4-A1` | done | `c2d522d` | Resize/Control Contract Closure |
+| `M4-A2` | done | `57a8dc4` | Resize/Control Enforcement Audit (verified correct) |
+| `M4-A3` | done | `(this commit)` | Resize/Control Evidence Tests + Queue Closeout |
+
+## M5 Planning (Host Integration Readiness)
 
 Pending queue definition. Next session:
-1. Scope resize/control path determinism and contract
-2. Define error boundaries for resize/control operations
+1. Scope host API surface and integration patterns
+2. Define stable public-facing contracts
 3. Plan enforcement and evidence strategy
 
 Guardrail: One ticket per commit. Mandatory validation per ticket:

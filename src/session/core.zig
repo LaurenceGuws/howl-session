@@ -1334,3 +1334,141 @@ test "lifecycle contract guarantee: control always records signal before transpo
     s_no_t.control(.terminate);
     try std.testing.expectEqual(ControlSignal.terminate, s_no_t.last_control_signal.?);
 }
+
+// ── M4-A3 Resize/Control Evidence Tests ─────────────────────────────────────
+
+test "M4-A3: resize contract: valid resize increments counter and records dims" {
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+    });
+    defer s.deinit();
+
+    try s.resize(132, 50);
+    try std.testing.expectEqual(@as(u16, 132), s.cols);
+    try std.testing.expectEqual(@as(u16, 50), s.rows);
+    try std.testing.expectEqual(@as(u32, 1), s.resize_count);
+}
+
+test "M4-A3: resize contract: same-dims resize still increments counter" {
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+    });
+    defer s.deinit();
+
+    try s.resize(80, 24);
+    try std.testing.expectEqual(@as(u32, 1), s.resize_count);
+
+    try s.resize(80, 24);
+    try std.testing.expectEqual(@as(u32, 2), s.resize_count);
+}
+
+test "M4-A3: resize contract: repeated different resizes increment counter independently" {
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+    });
+    defer s.deinit();
+
+    try s.resize(100, 40);
+    try s.resize(120, 50);
+    try s.resize(80, 24);
+
+    try std.testing.expectEqual(@as(u32, 3), s.resize_count);
+    try std.testing.expectEqual(@as(u16, 80), s.cols);
+    try std.testing.expectEqual(@as(u16, 24), s.rows);
+}
+
+test "M4-A3: resize contract: invalid zero-dim returns error without state change" {
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+    });
+    defer s.deinit();
+
+    try std.testing.expectError(error.InvalidDimensions, s.resize(0, 24));
+    try std.testing.expectEqual(@as(u16, 80), s.cols);
+    try std.testing.expectEqual(@as(u32, 0), s.resize_count);
+
+    // Next valid resize works fresh
+    try s.resize(100, 40);
+    try std.testing.expectEqual(@as(u32, 1), s.resize_count);
+}
+
+test "M4-A3: resize contract: transport failure leaves dims committed" {
+    var ft = transport_api.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+        .transport = ft.transport(),
+    });
+    defer s.deinit();
+
+    try std.testing.expectError(error.TransportFailed, s.resize(132, 50));
+    try std.testing.expectEqual(@as(u16, 132), s.cols);
+    try std.testing.expectEqual(@as(u16, 50), s.rows);
+    try std.testing.expectEqual(@as(u32, 1), s.resize_count);
+}
+
+test "M4-A3: control contract: signal always recorded regardless of transport" {
+    var ft = transport_api.FailTransport.init();
+    defer ft.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+        .transport = ft.transport(),
+    });
+    defer s.deinit();
+
+    s.control(.interrupt);
+    try std.testing.expectEqual(ControlSignal.interrupt, s.last_control_signal.?);
+
+    s.control(.terminate);
+    try std.testing.expectEqual(ControlSignal.terminate, s.last_control_signal.?);
+}
+
+test "M4-A3: control contract: repeated signals overwrite, no deduplication" {
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+    });
+    defer s.deinit();
+
+    s.control(.interrupt);
+    s.control(.interrupt);
+    s.control(.interrupt);
+
+    try std.testing.expectEqual(ControlSignal.interrupt, s.last_control_signal.?);
+}
+
+test "M4-A3: control contract: control before start is safe" {
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+    });
+    defer s.deinit();
+
+    s.control(.hangup);
+    try std.testing.expectEqual(ControlSignal.hangup, s.last_control_signal.?);
+    try std.testing.expectEqual(SessionStatus.idle, s.status);
+}
+
+test "M4-A3: control contract: control after stop is safe" {
+    var mt = transport_api.MemTransport.init(std.testing.allocator);
+    defer mt.deinit();
+    var s = try Session.init(.{
+        .allocator = std.testing.allocator,
+        .cols = 80, .rows = 24, .pending_capacity = 256,
+        .transport = mt.transport(),
+    });
+    defer s.deinit();
+
+    try s.start();
+    s.stop();
+
+    s.control(.hangup);
+    try std.testing.expectEqual(ControlSignal.hangup, s.last_control_signal.?);
+    try std.testing.expectEqual(SessionStatus.stopped, s.status);
+}
