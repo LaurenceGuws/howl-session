@@ -22,15 +22,15 @@
 | `M2-R4` | done | `8b16b01` | Queue Closeout (refactor batch) |
 | `M2-C1` | done | `e4594f4` | Unix PTY Contract Closure |
 | `M2-C2` | done | `e272829` | Unix PTY Evidence Hardening |
-| `M2-C3` | done | `(this commit)` | M2 Closeout and Queue Advance |
+| `M2-C3` | done | `93b4461` | M2 Closeout and Queue Advance |
 
-## M3 Entry (Lifecycle Safety)
+## M3 Execution Batch (Lifecycle Safety)
 
 | Ticket | Status | Intent |
 | --- | --- | --- |
-| `M3-P1` | pending | Planning: Startup/shutdown/restart/error boundary scope definition |
-| `M3-P2` | pending | Planning: Explicit lifecycle state machine contract documentation |
-| `M3-P3` | pending | Planning: Error-path recovery and failure mode boundaries |
+| `M3-A1` | pending | Lifecycle contract closure: explicit state machine, repeated-call semantics, and error-boundary guarantees in `app_architecture/contracts/API.md`. |
+| `M3-A2` | pending | Lifecycle enforcement in `src/session/core.zig`: guard transitions and deterministic failure post-conditions without API expansion. |
+| `M3-A3` | pending | Lifecycle evidence in `src/session/core.zig`: transition/error-path tests plus queue closeout update. |
 
 Guardrail: One ticket per commit. Mandatory validation per ticket:
 - `zig build`

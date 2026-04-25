@@ -327,6 +327,22 @@ test "unix pty transport: stop is idempotent" {
     try std.testing.expect(pty.child_pid == null);
 }
 
+test "unix pty transport: write/read path on started transport is deterministic" {
+    if (builtin.os.tag != .linux and builtin.os.tag != .macos) return error.SkipZigTest;
+
+    var pty = try UnixPtyTransport.init(std.testing.allocator, "/bin/bash", "read line; printf 'ECHO:%s\\n' \"$line\"; exit\n");
+    defer pty.deinit();
+    var t = pty.transport();
+
+    try t.start();
+    const n = try t.write("PING\n");
+    try std.testing.expectEqual(@as(usize, 5), n);
+
+    const found = try readUntilContains(t, std.testing.allocator, "ECHO:PING", 3000);
+    try std.testing.expect(found);
+    t.stop();
+}
+
 test "unix pty transport: control before start is safe" {
     if (builtin.os.tag != .linux and builtin.os.tag != .macos) return error.SkipZigTest;
 
