@@ -202,6 +202,86 @@ Any state ──deinit()──► (destroyed)
 - When session gains explicit read/write delegation, failure post-conditions will follow the same pattern: propagate error, leave session queue state unchanged.
 - Placeholder: no session queue mutation occurs on a failed delegation.
 
+## Host-Facing API Surface (Frozen)
+
+### Exported Root Symbols
+
+Hosts access the following symbols exclusively via `root.zig`:
+- `session` — module re-export from `session.zig`
+- `Session` — opaque session handle type
+- `SessionConfig` — configuration struct
+- `ControlSignal` — enum of control signal variants
+- `SessionStatus` — enum of observable session states
+- `transport` — module re-export from `transport.zig`
+- `Transport` — virtual interface for transport adapters
+- `MemTransport` — in-memory test adapter
+- `FailTransport` — failure-injection test adapter
+- `UnixPtyTransport` — Unix PTY production adapter
+
+### Session Type Observable Interface
+
+Hosts observe the following fields and call the following methods on `Session`:
+
+**Observable Fields (read-only from host perspective):**
+- `status: SessionStatus` — current session state
+- `cols: u16` — current terminal width
+- `rows: u16` — current terminal height
+- `resize_count: u32` — resize epoch counter
+- `last_control_signal: ?ControlSignal` — most recent control signal
+
+**Methods (host calls; no internal re-implementation allowed):**
+- `init(config: SessionConfig) !Session` — initialize session
+- `deinit(self: *Session) void` — release session resources
+- `start(self: *Session) anyerror!void` — activate transport
+- `stop(self: *Session) void` — deactivate transport
+- `feed(self: *Session, bytes: []const u8) error{OutOfMemory, QueueFull}!void` — queue input
+- `apply(self: *Session) usize` — drain pending queue
+- `reset(self: *Session) void` — clear pending queue
+- `resize(self: *Session, cols: u16, rows: u16) anyerror!void` — notify resize
+- `control(self: *Session, signal: ControlSignal) void` — route control signal
+
+### SessionConfig Type Interface
+
+Hosts provide and observe the following fields:
+
+| Field | Type | Required |
+| --- | --- | --- |
+| `allocator` | `std.mem.Allocator` | yes |
+| `cols` | `u16` | yes |
+| `rows` | `u16` | yes |
+| `pending_capacity` | `usize` | yes |
+| `transport` | `?*Transport` | no (optional) |
+
+### Transport Adapter Interface
+
+Transport implementations provide the following methods:
+
+- `start(self: *Self) anyerror!void`
+- `stop(self: *Self) void`
+- `write(self: *Self, bytes: []const u8) error{OutOfMemory, WriteError}!void`
+- `read(self: *Self) error{ReadError}!?[]const u8`
+- `resize(self: *Self, cols: u16, rows: u16) anyerror!void`
+- `control(self: *Self, signal: ControlSignal) void`
+
+### Breaking-Change Rules
+
+The following changes constitute breaking changes to the host API:
+
+1. **Removing or renaming exported symbols** in `root.zig`
+2. **Removing or renaming fields** in `Session`, `SessionConfig`, `ControlSignal`, or `SessionStatus`
+3. **Changing method signatures** (parameters, return types, or error unions) on `Session`
+4. **Removing or renaming variants** in `ControlSignal` or `SessionStatus` enums
+5. **Removing or changing transport vtable methods** (`Transport.start`, `.stop`, `.write`, `.read`, `.resize`, `.control`)
+6. **Changing method semantics** in ways that would alter observable behavior from a host's perspective
+
+The following changes are **not** breaking:
+
+- Adding new exported symbols
+- Adding new optional fields to `SessionConfig`
+- Adding new enum variants to `ControlSignal` or `SessionStatus`
+- Changing internal module structure (e.g., moving implementation between sub-modules) if public symbols and signatures remain stable
+- Improving error handling or diagnostics
+
 ## Stop Conditions
 
 Engineer must stop and report if any API boundary requires:
